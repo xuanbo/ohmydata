@@ -42,8 +42,8 @@ func (s *DataSource) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// BeforeSave 更新前
-func (s *DataSource) BeforeSave(tx *gorm.DB) error {
+// BeforeUpdate 更新前
+func (s *DataSource) BeforeUpdate(tx *gorm.DB) error {
 	ctx := tx.Statement.Context
 	user := ctx.Value(util.UserID)
 	if user != nil {

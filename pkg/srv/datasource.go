@@ -24,7 +24,7 @@ func NewDataSource() *DataSource {
 }
 
 // Create 新增
-func (d *DataSource) Create(ctx context.Context, dataSource *entity.DataSource) error {
+func (s *DataSource) Create(ctx context.Context, dataSource *entity.DataSource) error {
 	if dataSource.Type == "" || dataSource.Name == "" || dataSource.URL == "" {
 		return errors.New("字段[type、name、url]不能为空")
 	}
@@ -36,7 +36,7 @@ func (d *DataSource) Create(ctx context.Context, dataSource *entity.DataSource) 
 		dataSource.MaxOpenConns = 8
 	}
 
-	if err := d.db.Create(dataSource).Error; err != nil {
+	if err := s.db.WithContext(ctx).Create(dataSource).Error; err != nil {
 		return err
 	}
 
@@ -45,7 +45,7 @@ func (d *DataSource) Create(ctx context.Context, dataSource *entity.DataSource) 
 }
 
 // Modify 修改
-func (d *DataSource) Modify(ctx context.Context, dataSource *entity.DataSource) error {
+func (s *DataSource) Modify(ctx context.Context, dataSource *entity.DataSource) error {
 	if dataSource.ID == "" {
 		return errors.New("更新时主键不能为空")
 	}
@@ -59,7 +59,7 @@ func (d *DataSource) Modify(ctx context.Context, dataSource *entity.DataSource) 
 		dataSource.MaxOpenConns = 8
 	}
 
-	if err := d.db.Save(dataSource).Error; err != nil {
+	if err := s.db.WithContext(ctx).Save(dataSource).Error; err != nil {
 		return err
 	}
 
@@ -68,15 +68,15 @@ func (d *DataSource) Modify(ctx context.Context, dataSource *entity.DataSource) 
 }
 
 // List 列表查询
-func (d *DataSource) List(ctx context.Context) ([]*entity.DataSource, error) {
+func (s *DataSource) List(ctx context.Context) ([]*entity.DataSource, error) {
 	var list []*entity.DataSource
-	err := d.db.Find(&list).Error
+	err := s.db.WithContext(ctx).Find(&list).Error
 	return list, err
 }
 
 // Remove 删除
-func (d *DataSource) Remove(ctx context.Context, id string) error {
-	if err := d.db.Delete(&entity.DataSource{}, id).Error; err != nil {
+func (s *DataSource) Remove(ctx context.Context, id string) error {
+	if err := s.db.WithContext(ctx).Delete(&entity.DataSource{}, id).Error; err != nil {
 		return err
 	}
 
@@ -84,8 +84,32 @@ func (d *DataSource) Remove(ctx context.Context, id string) error {
 	return db.DelAdapter(id)
 }
 
+// Test 测试数据源连接
+func (s *DataSource) Test(ctx context.Context, dataSource *entity.DataSource) error {
+	if dataSource.Type == "" || dataSource.Name == "" || dataSource.URL == "" {
+		return errors.New("字段[type、name、url]不能为空")
+	}
+
+	factory, err := db.GetAdapterFactory(dataSource.Type)
+	if err != nil {
+		return err
+	}
+	adapter, err := factory.Create(dataSource)
+	if err != nil {
+		return err
+	}
+	defer adapter.Close()
+
+	if err := adapter.Ping(); err != nil {
+		log.Logger().Warn("驱动适配数据源无法连接", zap.String("type", dataSource.Type), zap.Error(err))
+		return err
+	}
+	log.Logger().Info("驱动适配数据源连接正常", zap.String("type", dataSource.Type))
+	return nil
+}
+
 // TableNames 查询表
-func (d *DataSource) TableNames(id string) ([]string, error) {
+func (s *DataSource) TableNames(id string) ([]string, error) {
 	adapter, err := db.GetAdapter(id)
 	if err != nil {
 		return nil, err
@@ -94,7 +118,7 @@ func (d *DataSource) TableNames(id string) ([]string, error) {
 }
 
 // Table 查询表结构
-func (d *DataSource) Table(id, name string) (*db.Table, error) {
+func (s *DataSource) Table(id, name string) (*db.Table, error) {
 	adapter, err := db.GetAdapter(id)
 	if err != nil {
 		return nil, err
@@ -103,7 +127,7 @@ func (d *DataSource) Table(id, name string) (*db.Table, error) {
 }
 
 // QueryTable 查询表数据
-func (d *DataSource) QueryTable(id, tableName string, page *model.Pagination) error {
+func (s *DataSource) QueryTable(id, tableName string, page *model.Pagination) error {
 	adapter, err := db.GetAdapter(id)
 	if err != nil {
 		return err
@@ -112,7 +136,7 @@ func (d *DataSource) QueryTable(id, tableName string, page *model.Pagination) er
 }
 
 // Query 查询数据
-func (d *DataSource) Query(id, exp string, page *model.Pagination) error {
+func (s *DataSource) Query(id, exp string, page *model.Pagination) error {
 	adapter, err := db.GetAdapter(id)
 	if err != nil {
 		return err

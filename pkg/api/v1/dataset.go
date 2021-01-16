@@ -24,93 +24,93 @@ func NewDataSet(srv *srv.DataSet) *DataSet {
 }
 
 // Init 初始化
-func (d *DataSet) Init() error {
+func (s *DataSet) Init() error {
 	// 同步数据集
-	srv.SyncDataSet(d.srv)
+	srv.SyncDataSet(s.srv)
 	return nil
 }
 
 // AddRoutes 添加路由
-func (d *DataSet) AddRoutes(e *echo.Echo) {
+func (s *DataSet) AddRoutes(e *echo.Echo) {
 	g := e.Group("/v1")
 	{
 		// 数据集管理
-		g.POST("/data-set", d.Create)
-		g.PUT("/data-set", d.Modify)
-		g.GET("/data-set/:id", d.ID)
-		g.GET("/data-set/:id/detail", d.Detail)
-		g.GET("/data-set/:id/doc", d.RenderAPIDoc)
-		g.POST("/data-set/exp", d.ParseExpression)
-		g.DELETE("/data-set/:id", d.Remove)
-		g.POST("/data-set/page", d.Page)
-		g.GET("/data-set/routes", d.APIRoutes)
+		g.POST("/data-set", s.Create)
+		g.PUT("/data-set", s.Modify)
+		g.GET("/data-set/:id", s.ID)
+		g.GET("/data-set/:id/detail", s.Detail)
+		g.GET("/data-set/:id/doc", s.RenderAPIDoc)
+		g.POST("/data-set/exp", s.ParseExpression)
+		g.DELETE("/data-set/:id", s.Remove)
+		g.POST("/data-set/page", s.Page)
+		g.GET("/data-set/routes", s.APIRoutes)
 	}
 
 	// 数据集API
-	e.GET("/api/*", d.ServeAPI)
-	e.POST("/api/*", d.ServeAPI)
+	e.GET("/api/*", s.ServeAPI)
+	e.POST("/api/*", s.ServeAPI)
 }
 
 // Create 创建
-func (d *DataSet) Create(ctx echo.Context) error {
-	var s entity.DataSet
-	if err := ctx.Bind(&s); err != nil {
+func (s *DataSet) Create(ctx echo.Context) error {
+	var dataSet entity.DataSet
+	if err := ctx.Bind(&dataSet); err != nil {
 		return err
 	}
 	c := ctx.(*middleware.Context).Ctx()
-	if err := d.srv.Create(c, &s); err != nil {
+	if err := s.srv.Create(c, &dataSet); err != nil {
 		return err
 	}
-	return ctx.JSON(http.StatusOK, model.OK(s))
+	return ctx.JSON(http.StatusOK, model.OK(dataSet))
 }
 
 // Modify 更新
-func (d *DataSet) Modify(ctx echo.Context) error {
-	var s entity.DataSet
-	if err := ctx.Bind(&s); err != nil {
+func (s *DataSet) Modify(ctx echo.Context) error {
+	var dataSet entity.DataSet
+	if err := ctx.Bind(&dataSet); err != nil {
 		return err
 	}
 	c := ctx.(*middleware.Context).Ctx()
-	if err := d.srv.Modify(c, &s); err != nil {
+	if err := s.srv.Modify(c, &dataSet); err != nil {
 		return err
 	}
-	return ctx.JSON(http.StatusOK, model.OK(s))
+	return ctx.JSON(http.StatusOK, model.OK(dataSet))
 }
 
 // Remove 删除
-func (d *DataSet) Remove(ctx echo.Context) error {
+func (s *DataSet) Remove(ctx echo.Context) error {
 	id := ctx.Param("id")
 	c := ctx.(*middleware.Context).Ctx()
-	if err := d.srv.Remove(c, id); err != nil {
+	if err := s.srv.Remove(c, id); err != nil {
 		return err
 	}
 	return ctx.JSON(http.StatusOK, model.OK(id))
 }
 
 // ID 主键查询
-func (d *DataSet) ID(ctx echo.Context) error {
+func (s *DataSet) ID(ctx echo.Context) error {
 	id := ctx.Param("id")
 	c := ctx.(*middleware.Context).Ctx()
-	s, err := d.srv.ID(c, id)
+	dataSet, err := s.srv.ID(c, id)
 	if err != nil {
 		return err
 	}
-	return ctx.JSON(http.StatusOK, model.OK(s))
+	return ctx.JSON(http.StatusOK, model.OK(dataSet))
 }
 
 // Detail 主键详情查询
-func (d *DataSet) Detail(ctx echo.Context) error {
+func (s *DataSet) Detail(ctx echo.Context) error {
 	id := ctx.Param("id")
 	c := ctx.(*middleware.Context).Ctx()
-	s, err := d.srv.Detail(c, id)
+	dataSet, err := s.srv.Detail(c, id)
 	if err != nil {
 		return err
 	}
-	return ctx.JSON(http.StatusOK, model.OK(s))
+	return ctx.JSON(http.StatusOK, model.OK(dataSet))
 }
 
 // Page 分页查询
-func (d *DataSet) Page(ctx echo.Context) error {
+func (s *DataSet) Page(ctx echo.Context) error {
 	var condition entity.DataSet
 	if err := ctx.Bind(&condition); err != nil {
 		return err
@@ -120,17 +120,17 @@ func (d *DataSet) Page(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, model.Fail(err.Error()))
 	}
 	c := ctx.(*middleware.Context).Ctx()
-	if err := d.srv.Page(c, &condition, pagination); err != nil {
+	if err := s.srv.Page(c, &condition, pagination); err != nil {
 		return err
 	}
 	return ctx.JSON(http.StatusOK, model.OK(pagination))
 }
 
 // RenderAPIDoc 渲染API文档
-func (d *DataSet) RenderAPIDoc(ctx echo.Context) error {
+func (s *DataSet) RenderAPIDoc(ctx echo.Context) error {
 	id := ctx.Param("id")
 	c := ctx.(*middleware.Context).Ctx()
-	doc, err := d.srv.RenderAPIDoc(c, id)
+	doc, err := s.srv.RenderAPIDoc(c, id)
 	if err != nil {
 		return err
 	}
@@ -142,12 +142,12 @@ type exp struct {
 }
 
 // ParseExpression 解析表达式
-func (d *DataSet) ParseExpression(ctx echo.Context) error {
+func (s *DataSet) ParseExpression(ctx echo.Context) error {
 	var exp exp
 	if err := ctx.Bind(&exp); err != nil {
 		return err
 	}
-	list, err := d.srv.ParseExpression(exp.Expression)
+	list, err := s.srv.ParseExpression(exp.Expression)
 	if err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func (d *DataSet) ParseExpression(ctx echo.Context) error {
 }
 
 // ServeAPI 提供API服务
-func (d *DataSet) ServeAPI(ctx echo.Context) error {
+func (s *DataSet) ServeAPI(ctx echo.Context) error {
 	var (
 		query = make(map[string]interface{})
 		body  = make(map[string]interface{})
@@ -172,7 +172,7 @@ func (d *DataSet) ServeAPI(ctx echo.Context) error {
 	path := ctx.Request().URL.Path
 	path = strings.TrimPrefix(path, "/api/")
 	c := ctx.(*middleware.Context).Ctx()
-	pagination, err := d.srv.ServeAPI(c, path, query, body)
+	pagination, err := s.srv.ServeAPI(c, path, query, body)
 	if err != nil {
 		return err
 	}
@@ -180,6 +180,6 @@ func (d *DataSet) ServeAPI(ctx echo.Context) error {
 }
 
 // APIRoutes 当前API路由
-func (d *DataSet) APIRoutes(ctx echo.Context) error {
-	return ctx.JSON(http.StatusOK, model.OK(d.srv.APIRoutes()))
+func (s *DataSet) APIRoutes(ctx echo.Context) error {
+	return ctx.JSON(http.StatusOK, model.OK(s.srv.APIRoutes()))
 }
