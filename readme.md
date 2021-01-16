@@ -19,6 +19,18 @@
 
 ## 运行
 
+配置文件 `config/config.yaml`
+
+运行：
+
 ```shell
 go run cmd/ohmydata/main.go
+```
+
+## Docker
+
+```shell
+docker build -t ohmydata .
+
+docker run -it --name ohmydata -e MYSQL_URL=YOUR_MYSQL_URL -p 9090:9090 ohmydata
 ```

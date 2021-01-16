@@ -150,18 +150,21 @@ func putAdapter(dataSource *entity.DataSource) error {
 	if err != nil {
 		return err
 	}
+
 	adapter, err := factory.Create(dataSource)
 	if err != nil {
+		log.Logger().Warn("驱动适配数据源无法连接", zap.String("id", dataSource.ID), zap.String("type", dataSource.Type), zap.Error(err))
 		return err
 	}
 
 	if err := adapter.Ping(); err == nil {
 		log.Logger().Info("驱动适配数据源连接正常", zap.String("id", dataSource.ID), zap.String("type", dataSource.Type))
 	} else {
-		log.Logger().Warn("驱动适配数据源无法连接", zap.String("id", dataSource.ID), zap.String("type", dataSource.Type))
+		log.Logger().Warn("驱动适配数据源无法连接", zap.String("id", dataSource.ID), zap.String("type", dataSource.Type), zap.Error(err))
 	}
 
 	if err := db.PutAdapter(dataSource.ID, adapter); err != nil {
+		log.Logger().Warn("驱动适配数据源更新错误", zap.String("id", dataSource.ID), zap.String("type", dataSource.Type), zap.Error(err))
 		return err
 	}
 	return nil
@@ -175,10 +178,11 @@ func SyncDataSource(dataSource *DataSource) error {
 	if err != nil {
 		return err
 	}
-	for _, e := range list {
-		if err := putAdapter(e); err != nil {
-			return err
+	// 异步加载数据源驱动
+	go func() {
+		for _, e := range list {
+			putAdapter(e)
 		}
-	}
+	}()
 	return nil
 }

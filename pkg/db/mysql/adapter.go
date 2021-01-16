@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -26,7 +27,9 @@ func (a *adapter) Ping() error {
 	if err != nil {
 		return err
 	}
-	return db.Ping()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	return db.PingContext(ctx)
 }
 
 func (a *adapter) Close() error {
@@ -143,18 +146,22 @@ type adapterFactory struct {
 }
 
 func (a *adapterFactory) Create(dataSource *entity.DataSource) (db.Adapter, error) {
-	gormDB, err := gorm.Open(mysql.Open(dataSource.URL), &gorm.Config{
-		Logger: orm.NewZapLogger(log.Logger(), 200*time.Millisecond),
+	gormDB, err := gorm.Open(mysql.New(mysql.Config{
+		DSN:                       dataSource.URL,
+		SkipInitializeWithVersion: true,
+	}), &gorm.Config{
+		DisableAutomaticPing: true,
+		Logger:               orm.NewZapLogger(log.Logger(), 200*time.Millisecond),
 	})
 	if err != nil {
-		return nil, err
+		return &adapter{gormDB}, err
 	}
 	// 设置日志级别
 	gormDB.Logger.LogMode(logger.Warn)
 	// 设置数据库连接池
 	db, err := gormDB.DB()
 	if err != nil {
-		return nil, err
+		return &adapter{gormDB}, err
 	}
 	db.SetMaxIdleConns(dataSource.MaxIdleConns)
 	db.SetMaxOpenConns(dataSource.MaxOpenConns)

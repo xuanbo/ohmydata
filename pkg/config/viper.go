@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/xuanbo/ohmydata/pkg/log"
 
@@ -12,12 +13,16 @@ import (
 func Init() error {
 	log.Logger().Info("初始化配置")
 
+	// 优先使用环境变量
+	viper.AutomaticEnv()
+	// database.mysql.dns => DATABASE_MYSQL_DNS
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("/etc/ohmydata/")
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("./config")
-	viper.AutomaticEnv()
 	if err := viper.ReadInConfig(); err != nil {
 		return err
 	}
