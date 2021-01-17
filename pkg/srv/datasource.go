@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/go-redis/redis/v8"
+	"github.com/xuanbo/ohmydata/pkg/cache"
 	"github.com/xuanbo/ohmydata/pkg/db"
 	"github.com/xuanbo/ohmydata/pkg/entity"
 	"github.com/xuanbo/ohmydata/pkg/log"
@@ -40,6 +42,9 @@ func (s *DataSource) Create(ctx context.Context, dataSource *entity.DataSource) 
 		return err
 	}
 
+	// 删除缓存
+	s.clearCache(ctx, "all")
+
 	// 适配层新增
 	return putAdapter(dataSource)
 }
@@ -63,14 +68,29 @@ func (s *DataSource) Modify(ctx context.Context, dataSource *entity.DataSource) 
 		return err
 	}
 
+	// 删除缓存
+	s.clearCache(ctx, "all")
+	s.clearCache(ctx, dataSource.ID)
+
 	// 适配层更新
 	return putAdapter(dataSource)
 }
 
-// List 列表查询
-func (s *DataSource) List(ctx context.Context) ([]*entity.DataSource, error) {
-	var list []*entity.DataSource
-	err := s.db.WithContext(ctx).Find(&list).Error
+// All 查询所有
+func (s *DataSource) All(ctx context.Context) ([]*entity.DataSource, error) {
+	var (
+		list []*entity.DataSource
+		key  = "ohmydata:datasource:all"
+		err  error
+	)
+	if err = cache.Get(ctx, key, &list); errors.Is(err, redis.Nil) {
+		// 查询db
+		if err = s.db.WithContext(ctx).Find(&list).Error; err != nil {
+			return nil, err
+		}
+		// 写入缓存
+		cache.Set(ctx, key, list, cacheTTL)
+	}
 	return list, err
 }
 
@@ -79,6 +99,10 @@ func (s *DataSource) Remove(ctx context.Context, id string) error {
 	if err := s.db.WithContext(ctx).Delete(&entity.DataSource{}, id).Error; err != nil {
 		return err
 	}
+
+	// 删除缓存
+	s.clearCache(ctx, "all")
+	s.clearCache(ctx, id)
 
 	// 适配层删除
 	return db.DelAdapter(id)
@@ -144,6 +168,12 @@ func (s *DataSource) Query(id, exp string, page *model.Pagination) error {
 	return adapter.Query(exp, page)
 }
 
+func (s *DataSource) clearCache(ctx context.Context, id string) {
+	log.Logger().Debug("清除数据源缓存", zap.String("id", id))
+	// 数据源缓存
+	cache.DelMatch(ctx, "ohmydata:datasource:"+id+"*")
+}
+
 func putAdapter(dataSource *entity.DataSource) error {
 	// 适配层新增
 	factory, err := db.GetAdapterFactory(dataSource.Type)
@@ -174,7 +204,7 @@ func putAdapter(dataSource *entity.DataSource) error {
 func SyncDataSource(dataSource *DataSource) error {
 	log.Logger().Info("初始化驱动适配数据源")
 
-	list, err := dataSource.List(context.TODO())
+	list, err := dataSource.All(context.TODO())
 	if err != nil {
 		return err
 	}

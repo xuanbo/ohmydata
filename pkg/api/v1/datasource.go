@@ -51,7 +51,7 @@ func (s *DataSource) AddRoutes(e *echo.Echo) {
 // List 列表查询
 func (s *DataSource) List(ctx echo.Context) error {
 	c := ctx.(*middleware.Context).Ctx()
-	list, err := s.srv.List(c)
+	list, err := s.srv.All(c)
 	if err != nil {
 		return err
 	}

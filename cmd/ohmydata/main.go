@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/xuanbo/ohmydata/pkg/api"
+	"github.com/xuanbo/ohmydata/pkg/cache"
 	"github.com/xuanbo/ohmydata/pkg/config"
 	"github.com/xuanbo/ohmydata/pkg/db"
 	"github.com/xuanbo/ohmydata/pkg/db/mysql"
@@ -29,6 +30,11 @@ func main() {
 	}
 	if err := postgres.Register(); err != nil {
 		log.Logger().Panic("注册驱动错误", zap.Error(err))
+	}
+
+	// 初始化redis
+	if err := cache.Init(); err != nil {
+		log.Logger().Panic("初始化redis错误", zap.Error(err))
 	}
 
 	// 同步数据库

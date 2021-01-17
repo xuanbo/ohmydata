@@ -1,9 +1,11 @@
 package srv_test
 
 import (
+	"github.com/xuanbo/ohmydata/pkg/cache"
 	"github.com/xuanbo/ohmydata/pkg/config"
 	"github.com/xuanbo/ohmydata/pkg/db"
 	"github.com/xuanbo/ohmydata/pkg/db/mysql"
+	"github.com/xuanbo/ohmydata/pkg/db/postgres"
 	"github.com/xuanbo/ohmydata/pkg/log"
 	"github.com/xuanbo/ohmydata/pkg/srv"
 )
@@ -21,6 +23,14 @@ func init() {
 
 	// 驱动
 	if err := mysql.Register(); err != nil {
+		panic(err)
+	}
+	if err := postgres.Register(); err != nil {
+		panic(err)
+	}
+
+	// 缓存
+	if err := cache.Init(); err != nil {
 		panic(err)
 	}
 

@@ -1,4 +1,8 @@
 mysql:
   url: root:123456@tcp(127.0.0.1:3306)/ohmydata?charset=utf8&parseTime=True
+redis:
+  addr: 127.0.0.1:6379
+  db: 0
+  password: ''
 http:
   addr: :9090

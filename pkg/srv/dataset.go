@@ -3,6 +3,7 @@ package srv
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +14,8 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/go-redis/redis/v8"
+	"github.com/xuanbo/ohmydata/pkg/cache"
 	"github.com/xuanbo/ohmydata/pkg/db"
 	"github.com/xuanbo/ohmydata/pkg/entity"
 	"github.com/xuanbo/ohmydata/pkg/log"
@@ -51,7 +54,7 @@ func (s *DataSet) Create(ctx context.Context, dataSet *entity.DataSet) error {
 	if err := s.validDataSet(ctx, dataSet); err != nil {
 		return err
 	}
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if len(dataSet.RequestParams) > 0 {
 			for _, requestParam := range dataSet.RequestParams {
 				if err := validRequestParam(requestParam); err != nil {
@@ -81,6 +84,9 @@ func (s *DataSet) Create(ctx context.Context, dataSet *entity.DataSet) error {
 		}
 		return nil
 	})
+	// 清除缓存
+	s.clearCache(ctx, "all")
+	return err
 }
 
 // Modify 修改
@@ -91,7 +97,7 @@ func (s *DataSet) Modify(ctx context.Context, dataSet *entity.DataSet) error {
 	if err := s.validDataSet(ctx, dataSet); err != nil {
 		return err
 	}
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// 删除参数
 		if err := tx.Delete(entity.RequestParam{}, "data_set_id = ?", dataSet.ID).Error; err != nil {
 			return err
@@ -129,11 +135,15 @@ func (s *DataSet) Modify(ctx context.Context, dataSet *entity.DataSet) error {
 		}
 		return nil
 	})
+	// 清除数据缓存
+	s.clearCache(ctx, "all")
+	s.clearCache(ctx, dataSet.ID)
+	return err
 }
 
 // Remove 主键删除
 func (s *DataSet) Remove(ctx context.Context, id string) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Delete(entity.RequestParam{}, "data_set_id = ?", id).Error; err != nil {
 			return err
 		}
@@ -142,6 +152,10 @@ func (s *DataSet) Remove(ctx context.Context, id string) error {
 		}
 		return tx.Delete(entity.DataSet{}, "id = ?", id).Error
 	})
+	// 清除数据缓存
+	s.clearCache(ctx, "all")
+	s.clearCache(ctx, id)
+	return err
 }
 
 // Page 分页查询
@@ -181,25 +195,39 @@ func (s *DataSet) Page(ctx context.Context, dataSet *entity.DataSet, page *model
 func (s *DataSet) All(ctx context.Context) ([]*entity.DataSet, error) {
 	var (
 		list []*entity.DataSet
+		key  = "ohmydata:dataset:all"
+		err  error
 	)
-	if err := s.db.WithContext(ctx).Find(&list).Error; err != nil {
-		return nil, err
+	if err = cache.Get(ctx, key, &list); errors.Is(err, redis.Nil) {
+		// 查询db
+		if err = s.db.WithContext(ctx).Find(&list).Error; err != nil {
+			return nil, err
+		}
+		// 写入缓存
+		cache.Set(ctx, key, list, cacheTTL)
 	}
-	return list, nil
+	return list, err
 }
 
 // ID 主键查询
 func (s *DataSet) ID(ctx context.Context, id string) (*entity.DataSet, error) {
 	var (
 		dataSet entity.DataSet
+		key     = "ohmydata:dataset:" + id
+		err     error
 	)
-	if err := s.db.WithContext(ctx).Where("id = ?", id).Find(&dataSet).Error; err != nil {
-		return nil, err
+	if err = cache.Get(ctx, key, &dataSet); errors.Is(err, redis.Nil) {
+		// 查询db
+		if err = s.db.WithContext(ctx).Where("id = ?", id).Find(&dataSet).Error; err != nil {
+			return nil, err
+		}
+		if dataSet.ID == "" {
+			return nil, nil
+		}
+		// 写入缓存
+		cache.Set(ctx, key, &dataSet, cacheTTL)
 	}
-	if dataSet.ID == "" {
-		return nil, nil
-	}
-	return &dataSet, nil
+	return &dataSet, err
 }
 
 // Detail 主键详情查询
@@ -208,46 +236,29 @@ func (s *DataSet) Detail(ctx context.Context, id string) (*entity.DataSet, error
 		dataSet        entity.DataSet
 		requestParams  []*entity.RequestParam
 		responseParams []*entity.ResponseParam
+		key            = "ohmydata:dataset:" + id + ":detail"
+		err            error
 	)
-	if err := s.db.WithContext(ctx).Where("id = ?", id).Find(&dataSet).Error; err != nil {
-		return nil, err
+	if err = cache.Get(ctx, key, &dataSet); errors.Is(err, redis.Nil) {
+		// 查询db
+		if err = s.db.WithContext(ctx).Where("id = ?", id).Find(&dataSet).Error; err != nil {
+			return nil, err
+		}
+		if dataSet.ID == "" {
+			return nil, nil
+		}
+		if err = s.db.WithContext(ctx).Where("data_set_id = ?", id).Find(&requestParams).Error; err != nil {
+			return nil, err
+		}
+		if err = s.db.WithContext(ctx).Where("data_set_id = ?", id).Find(&responseParams).Error; err != nil {
+			return nil, err
+		}
+		dataSet.RequestParams = requestParams
+		dataSet.ResponseParams = responseParams
+		// 写入缓存
+		cache.Set(ctx, key, &dataSet, cacheTTL)
 	}
-	if dataSet.ID == "" {
-		return nil, nil
-	}
-	if err := s.db.WithContext(ctx).Where("data_set_id = ?", id).Find(&requestParams).Error; err != nil {
-		return nil, err
-	}
-	if err := s.db.WithContext(ctx).Where("data_set_id = ?", id).Find(&responseParams).Error; err != nil {
-		return nil, err
-	}
-	dataSet.RequestParams = requestParams
-	dataSet.ResponseParams = responseParams
-	return &dataSet, nil
-}
-
-// DetailByPath path详情查询
-func (s *DataSet) DetailByPath(ctx context.Context, path string) (*entity.DataSet, error) {
-	var (
-		dataSet        entity.DataSet
-		requestParams  []*entity.RequestParam
-		responseParams []*entity.ResponseParam
-	)
-	if err := s.db.WithContext(ctx).Where("path = ?", path).Find(&dataSet).Error; err != nil {
-		return nil, err
-	}
-	if dataSet.ID == "" {
-		return nil, nil
-	}
-	if err := s.db.WithContext(ctx).Where("data_set_id = ?", dataSet.ID).Find(&requestParams).Error; err != nil {
-		return nil, err
-	}
-	if err := s.db.WithContext(ctx).Where("data_set_id = ?", dataSet.ID).Find(&responseParams).Error; err != nil {
-		return nil, err
-	}
-	dataSet.RequestParams = requestParams
-	dataSet.ResponseParams = responseParams
-	return &dataSet, nil
+	return &dataSet, err
 }
 
 // ChagePublishStatus 修改发布状态
@@ -256,6 +267,9 @@ func (s *DataSet) ChagePublishStatus(ctx context.Context, id string, status bool
 		Update("publish_status", status).Error; err != nil {
 		return err
 	}
+	// 清除缓存
+	s.clearCache(ctx, "all")
+	s.clearCache(ctx, id)
 	return nil
 }
 
@@ -323,11 +337,14 @@ func (s *DataSet) ServeAPI(ctx context.Context, path string, query, body map[str
 	for k, v := range body {
 		params[k] = v
 	}
-	path, nameParams, err := s.router.Match(path)
+	// 路径匹配
+	node, nameParams, err := s.router.Match(path)
 	if err != nil {
 		return nil, err
 	}
-	if path == "" {
+	// 绑定的数据集ID
+	id := node.Handle.(string)
+	if id == "" {
 		return nil, echo.NewHTTPError(http.StatusNotFound, "API不存在，请检查访问路径")
 	}
 	for k, v := range nameParams {
@@ -335,7 +352,7 @@ func (s *DataSet) ServeAPI(ctx context.Context, path string, query, body map[str
 	}
 
 	// 查询数据集
-	dataSet, err := s.DetailByPath(ctx, path)
+	dataSet, err := s.Detail(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -351,7 +368,7 @@ func (s *DataSet) ServeAPI(ctx context.Context, path string, query, body map[str
 	pagination := model.NewPagination(page, size)
 
 	if dataSet.EnableCache {
-		// 从缓存中查询
+		return doSelectFromCache(ctx, dataSet, pagination, params)
 	}
 
 	return doSelect(dataSet, pagination, params)
@@ -360,6 +377,14 @@ func (s *DataSet) ServeAPI(ctx context.Context, path string, query, body map[str
 // APIRoutes 当前API路由
 func (s *DataSet) APIRoutes() *Node {
 	return s.router
+}
+
+func (s *DataSet) clearCache(ctx context.Context, id string) {
+	log.Logger().Debug("清除数据集缓存", zap.String("id", id))
+	// 数据集缓存
+	cache.DelMatch(ctx, "ohmydata:dataset:"+id+"*")
+	// 数据集API结果缓存
+	cache.DelMatch(ctx, "ohmydata:datasetcache:"+id+":*")
 }
 
 func (s *DataSet) validDataSet(ctx context.Context, dataSet *entity.DataSet) error {
@@ -372,6 +397,9 @@ func (s *DataSet) validDataSet(ctx context.Context, dataSet *entity.DataSet) err
 	}
 	if dataSet.SourceID == "" {
 		return errors.New("数据集数据源不能为空")
+	}
+	if len(dataSet.ResponseParams) == 0 {
+		return errors.New("响应参数不能为空")
 	}
 	var total int64
 	if err := s.db.WithContext(ctx).Model(dataSet).Where("name = ? AND id <> ?", dataSet.Name, dataSet.ID).Count(&total).Error; err != nil {
@@ -467,27 +495,54 @@ func equalAny(v string, list []string) bool {
 
 func parsePagination(param map[string]interface{}, dataSet *entity.DataSet) (uint64, uint64, error) {
 	if !dataSet.EnablePage {
-		param["page"] = 1
+		param["page"] = 0
 		param["size"] = dataSet.BatchLimit
-		return 1, uint64(dataSet.BatchLimit), nil
+		return 0, uint64(dataSet.BatchLimit), nil
 	}
 	var (
 		page, size uint64
 		err        error
 	)
 	if v, ok := param["page"]; ok {
-		s := fmt.Sprintf("%s", v)
+		s := fmt.Sprintf("%v", v)
 		if page, err = strconv.ParseUint(s, 10, 64); err != nil {
 			return 0, 0, fmt.Errorf("分页参数page必须是一个正整数: %v", v)
 		}
 	}
 	if v, ok := param["size"]; ok {
-		s := fmt.Sprintf("%s", v)
+		s := fmt.Sprintf("%v", v)
 		if size, err = strconv.ParseUint(s, 10, 64); err != nil {
 			return 0, 0, fmt.Errorf("分页参数size必须是一个正整数: %v", v)
 		}
 	}
 	return page, size, nil
+}
+
+func doSelectFromCache(ctx context.Context, dataSet *entity.DataSet, pagination *model.Pagination, params map[string]interface{}) (interface{}, error) {
+	// 从缓存中查询
+	var (
+		v   interface{}
+		key string
+		err error
+	)
+	b, err := json.Marshal(params)
+	if err != nil {
+		return nil, err
+	}
+	key = "ohmydata:datasetcache:" + dataSet.ID + ":" + hex.EncodeToString(b)
+	log.Logger().Debug("从缓存中查询结果", zap.String("id", dataSet.ID), zap.String("key", key))
+	if err = cache.Get(ctx, key, &v); errors.Is(err, redis.Nil) {
+		// 缓存未命中，查询db
+		log.Logger().Debug("缓存未命中", zap.String("id", dataSet.ID), zap.String("key", key))
+		v, err = doSelect(dataSet, pagination, params)
+		if err != nil {
+			return nil, err
+		}
+		// 写入缓存
+		cache.Set(ctx, key, &v, time.Duration(dataSet.ExpireSeconds)*time.Second)
+		log.Logger().Debug("数据写入缓存", zap.String("id", dataSet.ID), zap.String("key", key))
+	}
+	return v, err
 }
 
 func doSelect(dataSet *entity.DataSet, pagination *model.Pagination, params map[string]interface{}) (interface{}, error) {
@@ -629,12 +684,14 @@ type Node struct {
 	Name string `json:"name"`
 	// 全路径
 	Path string `json:"path"`
+	// Handle 处理
+	Handle interface{}
 	// 子节点
 	Children []*Node `json:"children"`
 }
 
 // Add 添加路由
-func (n *Node) Add(path string) error {
+func (n *Node) Add(path string, handle interface{}) error {
 	if path == "" {
 		return errors.New("path不能为空")
 	}
@@ -652,6 +709,7 @@ func (n *Node) Add(path string) error {
 	}
 	if node.Path == "" {
 		node.Path = path
+		node.Handle = handle
 		return nil
 	}
 	return errors.New("路径重复注册")
@@ -678,14 +736,15 @@ func (n *Node) Remove(path string) error {
 		node = nil
 	} else {
 		node.Path = ""
+		node.Handle = nil
 	}
 	return nil
 }
 
 // Match 匹配
-func (n *Node) Match(path string) (string, map[string]string, error) {
+func (n *Node) Match(path string) (*Node, map[string]string, error) {
 	if path == "" {
-		return "", nil, errors.New("path不能为空")
+		return nil, nil, errors.New("path不能为空")
 	}
 	path = strings.TrimPrefix(path, "/")
 	names := strings.Split(path, "/")
@@ -695,10 +754,10 @@ func (n *Node) Match(path string) (string, map[string]string, error) {
 	)
 	for _, name := range names {
 		if name == "" {
-			return "", nil, errors.New("路径中不能包含空字符串，即/some//path")
+			return nil, nil, errors.New("路径中不能包含空字符串，即/some//path")
 		}
 		if len(node.Children) == 0 {
-			return "", nil, nil
+			return nil, nil, nil
 		}
 		// 寻找该层级匹配的路径
 		var matchNode *Node
@@ -713,10 +772,10 @@ func (n *Node) Match(path string) (string, map[string]string, error) {
 		}
 		node = matchNode
 		if node == nil {
-			return "", nil, nil
+			return nil, nil, nil
 		}
 	}
-	return node.Path, namingParams, nil
+	return node, namingParams, nil
 }
 
 func (n *Node) findChild(name string) (*Node, error) {
@@ -761,7 +820,10 @@ func SyncDataSet(dataSet *DataSet) {
 				log.Logger().Warn("查询数据集错误", zap.Error(err))
 			} else {
 				for _, e := range list {
-					if err := router.Add(e.Path); err != nil {
+					if !e.PublishStatus {
+						continue
+					}
+					if err := router.Add(e.Path, e.ID); err != nil {
 						log.Logger().Warn("加载数据集错误", zap.String("path", e.Path), zap.Error(err))
 					}
 				}

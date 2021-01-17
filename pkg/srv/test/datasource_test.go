@@ -36,9 +36,9 @@ func TestDataSourceModify(t *testing.T) {
 	}
 }
 
-func TestDataSourceList(t *testing.T) {
+func TestDataSourceAll(t *testing.T) {
 	dataSource := srv.NewDataSource()
-	list, err := dataSource.List(context.TODO())
+	list, err := dataSource.All(context.TODO())
 	if err != nil {
 		t.Error(err)
 		return

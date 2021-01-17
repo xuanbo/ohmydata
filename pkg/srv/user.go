@@ -6,10 +6,16 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/go-redis/redis/v8"
+	"github.com/xuanbo/ohmydata/pkg/cache"
 	"github.com/xuanbo/ohmydata/pkg/db"
 	"github.com/xuanbo/ohmydata/pkg/entity"
 
 	"gorm.io/gorm"
+)
+
+const (
+	cacheTTL = 5 * time.Minute
 )
 
 // User 用户服务
@@ -22,6 +28,27 @@ func NewUser() *User {
 	return &User{db: db.DB}
 }
 
+// Username 查询用户
+func (u *User) Username(ctx context.Context, username string) (*entity.User, error) {
+	var (
+		user entity.User
+		key  = "ohmydata:user:username:" + username
+		err  error
+	)
+	if err = cache.Get(ctx, key, &user); errors.Is(err, redis.Nil) {
+		// 查询db
+		if err = u.db.WithContext(ctx).Where("username = ?", username).Find(&user).Error; err != nil {
+			return nil, err
+		}
+		if user.ID == "" {
+			return nil, nil
+		}
+		// 写入缓存
+		cache.Set(ctx, key, &user, cacheTTL)
+	}
+	return &user, err
+}
+
 // Login 登录
 func (u *User) Login(ctx context.Context, user *entity.User) (string, error) {
 	if user.Username == "" {
@@ -30,11 +57,11 @@ func (u *User) Login(ctx context.Context, user *entity.User) (string, error) {
 	if user.Password == "" {
 		return "", errors.New("密码不能为空")
 	}
-	var s entity.User
-	if err := u.db.WithContext(ctx).Where("username = ?", user.Username).Find(&s).Error; err != nil {
+	s, err := u.Username(ctx, user.Username)
+	if err != nil {
 		return "", err
 	}
-	if s.ID == "" {
+	if s == nil {
 		return "", errors.New("用户不存在")
 	}
 	if s.Password != user.Password {

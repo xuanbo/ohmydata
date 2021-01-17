@@ -124,17 +124,17 @@ func TestDataSetParseExpression(t *testing.T) {
 
 func TestRouter(t *testing.T) {
 	router := new(srv.Node)
-	router.Add("/user")
-	router.Add("/user/:id")
-	router.Add("/user/:name")
-	router.Add("/user/:id/detail")
-	router.Add("/user/page")
-	router.Add("/some/path")
-	path, params, err := router.Match("/user/1/detail")
+	router.Add("/user", "/user")
+	router.Add("/user/:id", "/user/:id")
+	router.Add("/user/:name", "/user/:name")
+	router.Add("/user/:id/detail", "/user/:id/detail")
+	router.Add("/user/page", "/user/page")
+	router.Add("/some/path", "/some/path")
+	node, params, err := router.Match("/user/1/detail")
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	t.Logf("path: %s\n", path)
+	t.Logf("node: %v\n", node)
 	t.Logf("params: %s\n", params)
 }
