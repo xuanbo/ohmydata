@@ -367,6 +367,7 @@ func (s *DataSet) ServeAPI(ctx context.Context, path string, query, body map[str
 	}
 	pagination := model.NewPagination(page, size)
 
+	// 缓存
 	if dataSet.EnableCache {
 		return doSelectFromCache(ctx, dataSet, pagination, params)
 	}
@@ -553,7 +554,6 @@ func doSelect(dataSet *entity.DataSet, pagination *model.Pagination, params map[
 
 	// 渲染表达式
 	log.Logger().Info("表达式模板", zap.String("expression", dataSet.Expression))
-
 	var buff bytes.Buffer
 	tpl, err := template.New(dataSet.ID).Parse(dataSet.Expression)
 	if err != nil {
@@ -607,6 +607,10 @@ func convertResponseParams(pagination *model.Pagination, dataSet *entity.DataSet
 				}
 			}
 		}
+	}
+	// 未分页则返回数据
+	if !dataSet.EnablePage {
+		return pagination.Data, nil
 	}
 	return pagination, nil
 }

@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/xuanbo/ohmydata/pkg/config"
+
+	"github.com/go-redis/redis/v8"
 )
 
 var (

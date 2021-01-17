@@ -123,6 +123,19 @@ func (a *adapter) Query(exp string, page *model.Pagination) error {
 		total uint64
 		data  []map[string]interface{}
 	)
+
+	// 未分页限制查询
+	if page.Page == 0 {
+		pageSQL := fmt.Sprintf("SELECT * FROM (%s) TMP_PAGE LIMIT %d", exp, page.Offset)
+		if err := a.db.Raw(pageSQL).Scan(&data).Error; err != nil {
+			return err
+		}
+		total = uint64(len(data))
+
+		page.Set(total, data)
+		return nil
+	}
+
 	countSQL := fmt.Sprintf("SELECT COUNT(*) FROM (%s) TMP_COUNT", exp)
 	if err := a.db.Raw(countSQL).Scan(&total).Error; err != nil {
 		return err

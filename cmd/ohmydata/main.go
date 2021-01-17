@@ -26,10 +26,10 @@ func main() {
 
 	// 驱动适配层
 	if err := mysql.Register(); err != nil {
-		log.Logger().Panic("注册驱动错误", zap.Error(err))
+		log.Logger().Panic("注册mysql驱动错误", zap.Error(err))
 	}
 	if err := postgres.Register(); err != nil {
-		log.Logger().Panic("注册驱动错误", zap.Error(err))
+		log.Logger().Panic("注册postgres驱动错误", zap.Error(err))
 	}
 
 	// 初始化redis

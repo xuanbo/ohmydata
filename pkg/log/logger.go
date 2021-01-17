@@ -32,7 +32,7 @@ func Init() error {
 
 	// 日志级别
 	var atom zap.AtomicLevel
-	level := os.Getenv("OH_MY_DATA_LOGGER_LEVEL")
+	level := os.Getenv("LOGGER_LEVEL")
 	switch level {
 	case "debug":
 		atom = zap.NewAtomicLevelAt(zap.DebugLevel)
