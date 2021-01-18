@@ -4,6 +4,7 @@ import (
 	"github.com/xuanbo/ohmydata/pkg/cache"
 	"github.com/xuanbo/ohmydata/pkg/config"
 	"github.com/xuanbo/ohmydata/pkg/db"
+	"github.com/xuanbo/ohmydata/pkg/db/elastic"
 	"github.com/xuanbo/ohmydata/pkg/db/mysql"
 	"github.com/xuanbo/ohmydata/pkg/db/postgres"
 	"github.com/xuanbo/ohmydata/pkg/log"
@@ -26,6 +27,9 @@ func init() {
 		panic(err)
 	}
 	if err := postgres.Register(); err != nil {
+		panic(err)
+	}
+	if err := elastic.Register(); err != nil {
 		panic(err)
 	}
 

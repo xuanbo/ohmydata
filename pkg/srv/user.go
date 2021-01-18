@@ -5,12 +5,12 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
-	"github.com/go-redis/redis/v8"
 	"github.com/xuanbo/ohmydata/pkg/cache"
 	"github.com/xuanbo/ohmydata/pkg/db"
 	"github.com/xuanbo/ohmydata/pkg/entity"
 
+	"github.com/dgrijalva/jwt-go"
+	"github.com/go-redis/redis/v8"
 	"gorm.io/gorm"
 )
 

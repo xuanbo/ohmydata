@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/xuanbo/ohmydata/pkg/cache"
 	"github.com/xuanbo/ohmydata/pkg/db"
 	"github.com/xuanbo/ohmydata/pkg/entity"
 	"github.com/xuanbo/ohmydata/pkg/log"
 	"github.com/xuanbo/ohmydata/pkg/model"
 
+	"github.com/go-redis/redis/v8"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )

@@ -10,12 +10,16 @@
 
 - MySQL
 - PostgreSQL
+- ElasticSearch
 
 待实现：
 
 - Oracle
-- ElasticSearch
 - ...
+
+## 文档
+
+待完善。
 
 ## 运行
 
@@ -32,5 +36,10 @@ go run cmd/ohmydata/main.go
 ```shell
 docker build -t ohmydata .
 
-docker run -it --name ohmydata -e MYSQL_URL=YOUR_MYSQL_URL -p 9090:9090 ohmydata
+docker run -it --name ohmydata \
+ -e MYSQL_URL=YOUR_MYSQL_URL \
+ -e REDIS_ADDR=YOUR_REDIS_ADDR \
+ -e REDIS_DB=YOUR_REDIS_DB \
+ -e REDIS_PASSWORD=YOUR_REDIS_PASSWORD \
+ -p 9090:9090 ohmydata
 ```

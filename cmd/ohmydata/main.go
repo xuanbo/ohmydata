@@ -5,6 +5,7 @@ import (
 	"github.com/xuanbo/ohmydata/pkg/cache"
 	"github.com/xuanbo/ohmydata/pkg/config"
 	"github.com/xuanbo/ohmydata/pkg/db"
+	"github.com/xuanbo/ohmydata/pkg/db/elastic"
 	"github.com/xuanbo/ohmydata/pkg/db/mysql"
 	"github.com/xuanbo/ohmydata/pkg/db/postgres"
 	"github.com/xuanbo/ohmydata/pkg/log"
@@ -30,6 +31,9 @@ func main() {
 	}
 	if err := postgres.Register(); err != nil {
 		log.Logger().Panic("注册postgres驱动错误", zap.Error(err))
+	}
+	if err := elastic.Register(); err != nil {
+		log.Logger().Panic("注册elastic驱动错误", zap.Error(err))
 	}
 
 	// 初始化redis
