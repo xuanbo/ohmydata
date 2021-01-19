@@ -1,6 +1,7 @@
 package postgres_test
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -40,7 +41,7 @@ func TestTableNames(t *testing.T) {
 	}
 	defer adapter.Close()
 
-	tableNames, err := adapter.TableNames()
+	tableNames, err := adapter.TableNames(context.TODO())
 	if err != nil {
 		t.Error(err)
 		return
@@ -66,7 +67,7 @@ func TestTable(t *testing.T) {
 	}
 	defer adapter.Close()
 
-	table, err := adapter.Table("oh_data_set")
+	table, err := adapter.Table(context.TODO(), "oh_data_set")
 	if err != nil {
 		t.Error(err)
 		return
@@ -98,7 +99,7 @@ func TestQueryTable(t *testing.T) {
 	defer adapter.Close()
 
 	page := model.NewPagination(1, 10)
-	err = adapter.QueryTable("oh_data_set", page)
+	err = adapter.QueryTable(context.TODO(), "oh_data_set", page)
 	if err != nil {
 		t.Error(err)
 		return
@@ -131,7 +132,7 @@ func TestQuery(t *testing.T) {
 	defer adapter.Close()
 
 	page := model.NewPagination(1, 10)
-	err = adapter.Query("select * from oh_data_set", page)
+	err = adapter.Query(context.TODO(), "select * from oh_data_set", page)
 	if err != nil {
 		t.Error(err)
 		return

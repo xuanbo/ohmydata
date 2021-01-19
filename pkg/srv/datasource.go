@@ -3,6 +3,7 @@ package srv
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/xuanbo/ohmydata/pkg/cache"
 	"github.com/xuanbo/ohmydata/pkg/db"
@@ -124,7 +125,7 @@ func (s *DataSource) Test(ctx context.Context, dataSource *entity.DataSource) er
 	}
 	defer adapter.Close()
 
-	if err := adapter.Ping(); err != nil {
+	if err := adapter.Ping(ctx); err != nil {
 		log.Logger().Warn("驱动适配数据源无法连接", zap.String("type", dataSource.Type), zap.Error(err))
 		return err
 	}
@@ -133,39 +134,39 @@ func (s *DataSource) Test(ctx context.Context, dataSource *entity.DataSource) er
 }
 
 // TableNames 查询表
-func (s *DataSource) TableNames(id string) ([]string, error) {
+func (s *DataSource) TableNames(ctx context.Context, id string) ([]string, error) {
 	adapter, err := db.GetAdapter(id)
 	if err != nil {
 		return nil, err
 	}
-	return adapter.TableNames()
+	return adapter.TableNames(ctx)
 }
 
 // Table 查询表结构
-func (s *DataSource) Table(id, name string) (*db.Table, error) {
+func (s *DataSource) Table(ctx context.Context, id, name string) (*db.Table, error) {
 	adapter, err := db.GetAdapter(id)
 	if err != nil {
 		return nil, err
 	}
-	return adapter.Table(name)
+	return adapter.Table(ctx, name)
 }
 
 // QueryTable 查询表数据
-func (s *DataSource) QueryTable(id, tableName string, page *model.Pagination) error {
+func (s *DataSource) QueryTable(ctx context.Context, id, tableName string, page *model.Pagination) error {
 	adapter, err := db.GetAdapter(id)
 	if err != nil {
 		return err
 	}
-	return adapter.QueryTable(tableName, page)
+	return adapter.QueryTable(ctx, tableName, page)
 }
 
 // Query 查询数据
-func (s *DataSource) Query(id, exp string, page *model.Pagination) error {
+func (s *DataSource) Query(ctx context.Context, id, exp string, page *model.Pagination) error {
 	adapter, err := db.GetAdapter(id)
 	if err != nil {
 		return err
 	}
-	return adapter.Query(exp, page)
+	return adapter.Query(ctx, exp, page)
 }
 
 func (s *DataSource) clearCache(ctx context.Context, id string) {
@@ -187,7 +188,9 @@ func putAdapter(dataSource *entity.DataSource) error {
 		return err
 	}
 
-	if err := adapter.Ping(); err == nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if err := adapter.Ping(ctx); err == nil {
 		log.Logger().Info("驱动适配数据源连接正常", zap.String("id", dataSource.ID), zap.String("type", dataSource.Type))
 	} else {
 		log.Logger().Warn("驱动适配数据源无法连接", zap.String("id", dataSource.ID), zap.String("type", dataSource.Type), zap.Error(err))

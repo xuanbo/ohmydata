@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/xuanbo/ohmydata/pkg/cache"
+	"github.com/xuanbo/ohmydata/pkg/config"
 	"github.com/xuanbo/ohmydata/pkg/db"
 	"github.com/xuanbo/ohmydata/pkg/entity"
 
@@ -20,12 +21,26 @@ const (
 
 // User 用户服务
 type User struct {
-	db *gorm.DB
+	db        *gorm.DB
+	jwtSecret string
+	jwtExpire int
 }
 
 // NewUser 创建实例
 func NewUser() *User {
-	return &User{db: db.DB}
+	var (
+		secret string
+		expire int
+	)
+	secret = config.GetString("jwt.secret")
+	if secret == "" {
+		secret = "secret"
+	}
+	expire = config.GetInt("jwt.expire")
+	if expire == 0 {
+		expire = 30 * 60
+	}
+	return &User{db: db.DB, jwtSecret: secret, jwtExpire: expire}
 }
 
 // Username 查询用户
@@ -69,8 +84,7 @@ func (u *User) Login(ctx context.Context, user *entity.User) (string, error) {
 	}
 	// Create the Claims
 	claims := &jwt.StandardClaims{
-		// 30分钟过期
-		ExpiresAt: time.Now().Add(30 * time.Minute).Unix(),
+		ExpiresAt: time.Now().Add(time.Duration(u.jwtExpire) * time.Second).Unix(),
 	}
 	token := &jwt.Token{
 		Header: map[string]interface{}{
@@ -84,5 +98,5 @@ func (u *User) Login(ctx context.Context, user *entity.User) (string, error) {
 		Claims: claims,
 		Method: jwt.SigningMethodHS256,
 	}
-	return token.SignedString([]byte("secret"))
+	return token.SignedString([]byte(u.jwtSecret))
 }

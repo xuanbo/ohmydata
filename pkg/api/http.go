@@ -4,14 +4,15 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/xuanbo/ohmydata/pkg/api/middleware"
 	"github.com/xuanbo/ohmydata/pkg/api/util"
 	"github.com/xuanbo/ohmydata/pkg/config"
 	"github.com/xuanbo/ohmydata/pkg/log"
 	"github.com/xuanbo/ohmydata/pkg/model"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo/v4"
 	mw "github.com/labstack/echo/v4/middleware"
 	"go.uber.org/zap"
@@ -22,17 +23,26 @@ func ServeHTTP() error {
 	// Echo instance
 	router := echo.New()
 
+	secret := config.GetString("jwt.secret")
+	if secret == "" {
+		secret = "secret"
+	}
+	timeout := config.GetInt("http.timeout")
+	if timeout <= 0 {
+		timeout = 10
+	}
+
 	// Middleware
 	router.HTTPErrorHandler = customHTTPErrorHandler
 	router.Use(middleware.ZapLogger(log.Logger()))
 	router.Use(middleware.Recover(log.Logger()))
-	router.Use(middleware.NewContext())
+	router.Use(middleware.NewContext(time.Duration(timeout) * time.Second))
 	router.Use(mw.JWTWithConfig(mw.JWTConfig{
 		// 跳过登录
 		Skipper: func(ctx echo.Context) bool {
 			return ctx.Path() == "/v1/user/login"
 		},
-		SigningKey:  []byte("secret"),
+		SigningKey:  []byte(secret),
 		ContextKey:  "JWT_TOKEN",
 		TokenLookup: "header:" + echo.HeaderAuthorization,
 		ErrorHandler: func(err error) error {

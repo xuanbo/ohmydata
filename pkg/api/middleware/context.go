@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"time"
 
 	"github.com/labstack/echo/v4"
 )
@@ -22,10 +23,12 @@ func (c Context) SetCtx(ctx context.Context) {
 }
 
 // NewContext 包装echo.Context
-func NewContext() echo.MiddlewareFunc {
+func NewContext(timeout time.Duration) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(ctx echo.Context) (err error) {
-			ctx.Set("CTX", context.Background())
+			c, cancel := context.WithTimeout(context.Background(), timeout)
+			defer cancel()
+			ctx.Set("CTX", c)
 			return next(&Context{ctx})
 		}
 	}

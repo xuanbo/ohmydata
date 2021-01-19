@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -16,17 +17,17 @@ var (
 // Adapter 数据库适配层
 type Adapter interface {
 	// Ping 数据库是否连通
-	Ping() error
+	Ping(ctx context.Context) error
 	// Close 关闭
 	Close() error
 	// TableNames 表名
-	TableNames() ([]string, error)
+	TableNames(ctx context.Context) ([]string, error)
 	// Table 表结构
-	Table(name string) (*Table, error)
+	Table(ctx context.Context, name string) (*Table, error)
 	// QueryTable 查询表
-	QueryTable(tableName string, page *model.Pagination) error
+	QueryTable(ctx context.Context, tableName string, page *model.Pagination) error
 	// Query 数据库查询
-	Query(exp string, page *model.Pagination) error
+	Query(ctx context.Context, exp string, page *model.Pagination) error
 }
 
 // Table 表

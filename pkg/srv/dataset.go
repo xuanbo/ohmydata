@@ -3,7 +3,7 @@ package srv
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
+	"crypto/md5"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -372,7 +372,7 @@ func (s *DataSet) ServeAPI(ctx context.Context, path string, query, body map[str
 		return doSelectFromCache(ctx, dataSet, pagination, params)
 	}
 
-	return doSelect(dataSet, pagination, params)
+	return doSelect(ctx, dataSet, pagination, params)
 }
 
 // APIRoutes 当前API路由
@@ -530,12 +530,12 @@ func doSelectFromCache(ctx context.Context, dataSet *entity.DataSet, pagination 
 	if err != nil {
 		return nil, err
 	}
-	key = "ohmydata:datasetcache:" + dataSet.ID + ":" + hex.EncodeToString(b)
+	key = "ohmydata:datasetcache:" + dataSet.ID + ":" + fmt.Sprintf("%x", md5.Sum(b))
 	log.Logger().Debug("从缓存中查询结果", zap.String("id", dataSet.ID), zap.String("key", key))
 	if err = cache.Get(ctx, key, &v); errors.Is(err, redis.Nil) {
 		// 缓存未命中，查询db
 		log.Logger().Debug("缓存未命中", zap.String("id", dataSet.ID), zap.String("key", key))
-		v, err = doSelect(dataSet, pagination, params)
+		v, err = doSelect(ctx, dataSet, pagination, params)
 		if err != nil {
 			return nil, err
 		}
@@ -546,7 +546,7 @@ func doSelectFromCache(ctx context.Context, dataSet *entity.DataSet, pagination 
 	return v, err
 }
 
-func doSelect(dataSet *entity.DataSet, pagination *model.Pagination, params map[string]interface{}) (interface{}, error) {
+func doSelect(ctx context.Context, dataSet *entity.DataSet, pagination *model.Pagination, params map[string]interface{}) (interface{}, error) {
 	adapter, err := db.GetAdapter(dataSet.SourceID)
 	if err != nil {
 		return nil, err
@@ -566,7 +566,7 @@ func doSelect(dataSet *entity.DataSet, pagination *model.Pagination, params map[
 	log.Logger().Info("表达式", zap.String("expression", exp))
 
 	// 查询
-	if err := adapter.Query(exp, pagination); err != nil {
+	if err := adapter.Query(ctx, exp, pagination); err != nil {
 		return nil, err
 	}
 

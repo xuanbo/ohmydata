@@ -62,7 +62,7 @@ func TestDataSourceRemove(t *testing.T) {
 
 func TestDataSourceTableNames(t *testing.T) {
 	dataSource := srv.NewDataSource()
-	list, err := dataSource.TableNames("1346729481838006272")
+	list, err := dataSource.TableNames(context.TODO(), "1346729481838006272")
 	if err != nil {
 		t.Error(err)
 		return

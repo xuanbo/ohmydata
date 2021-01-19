@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/xuanbo/ohmydata/pkg/db"
 	"github.com/xuanbo/ohmydata/pkg/entity"
@@ -26,12 +25,10 @@ type adapter struct {
 	es *elasticsearch.Client
 }
 
-func (a *adapter) Ping() error {
+func (a *adapter) Ping(ctx context.Context) error {
 	if a.es == nil {
 		return ErrNil
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
 	var ping esapi.Ping
 	_, err := a.es.Ping(ping.WithContext(ctx))
 	if err != nil {
@@ -47,13 +44,11 @@ func (a *adapter) Close() error {
 	return nil
 }
 
-func (a *adapter) TableNames() ([]string, error) {
+func (a *adapter) TableNames(ctx context.Context) ([]string, error) {
 	if a.es == nil {
 		return nil, ErrNil
 	}
 	// 执行SQL查询
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
 	var sqlQuery esapi.SQLQuery
 	resp, err := a.es.SQL.Query(strings.NewReader(`{"query": "show tables"}`), sqlQuery.WithContext(ctx))
 	if err != nil {
@@ -77,15 +72,13 @@ func (a *adapter) TableNames() ([]string, error) {
 	return tableNames, nil
 }
 
-func (a *adapter) Table(name string) (*db.Table, error) {
+func (a *adapter) Table(ctx context.Context, name string) (*db.Table, error) {
 	if a.es == nil {
 		return nil, ErrNil
 	}
 	// 执行SQL查询
 	log.Logger().Debug("查询表结构", zap.String("table", name))
 	body := fmt.Sprintf(`{"query": "desc %s"}`, "\\\""+name+"\\\"")
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
 	var sqlQuery esapi.SQLQuery
 	resp, err := a.es.SQL.Query(strings.NewReader(body), sqlQuery.WithContext(ctx))
 	if err != nil {
@@ -113,7 +106,7 @@ func (a *adapter) Table(name string) (*db.Table, error) {
 	return table, nil
 }
 
-func (a *adapter) QueryTable(tableName string, page *model.Pagination) error {
+func (a *adapter) QueryTable(ctx context.Context, tableName string, page *model.Pagination) error {
 	if a.es == nil {
 		return ErrNil
 	}
@@ -123,7 +116,7 @@ func (a *adapter) QueryTable(tableName string, page *model.Pagination) error {
 	// 执行SQL查询
 	log.Logger().Debug("查询表数据", zap.String("table", tableName))
 	body := fmt.Sprintf(`{"query": "SELECT * FROM %s LIMIT %d"}`, "\\\""+tableName+"\\\"", page.Size)
-	list, err := a.doQuery(body)
+	list, err := a.doQuery(ctx, body)
 	if err != nil {
 		return err
 	}
@@ -131,7 +124,7 @@ func (a *adapter) QueryTable(tableName string, page *model.Pagination) error {
 	return nil
 }
 
-func (a *adapter) Query(exp string, page *model.Pagination) error {
+func (a *adapter) Query(ctx context.Context, exp string, page *model.Pagination) error {
 	if a.es == nil {
 		return ErrNil
 	}
@@ -141,7 +134,7 @@ func (a *adapter) Query(exp string, page *model.Pagination) error {
 	// 执行SQL查询
 	log.Logger().Debug("查询SQL", zap.String("sql", exp))
 	body := fmt.Sprintf(`{"query": "SELECT * FROM (%s) TMP_PAGE LIMIT %d"}`, exp, page.Size)
-	list, err := a.doQuery(body)
+	list, err := a.doQuery(ctx, body)
 	if err != nil {
 		return err
 	}
@@ -161,10 +154,8 @@ func (a *adapter) parseBody(resp *esapi.Response) (map[string]interface{}, error
 	return v, nil
 }
 
-func (a *adapter) doQuery(body string) ([]map[string]interface{}, error) {
+func (a *adapter) doQuery(ctx context.Context, body string) ([]map[string]interface{}, error) {
 	// 执行
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 	var sqlQuery esapi.SQLQuery
 	resp, err := a.es.SQL.Query(strings.NewReader(body), sqlQuery.WithContext(ctx))
 	if err != nil {

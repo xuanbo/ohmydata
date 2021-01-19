@@ -1,6 +1,7 @@
 package elastic_test
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -40,7 +41,7 @@ func TestPing(t *testing.T) {
 	}
 	defer adapter.Close()
 
-	if err := adapter.Ping(); err != nil {
+	if err := adapter.Ping(context.TODO()); err != nil {
 		t.Error(err)
 		return
 	}
@@ -65,7 +66,7 @@ func TestTableNames(t *testing.T) {
 	}
 	defer adapter.Close()
 
-	tableNames, err := adapter.TableNames()
+	tableNames, err := adapter.TableNames(context.TODO())
 	if err != nil {
 		t.Error(err)
 		return
@@ -91,7 +92,7 @@ func TestTable(t *testing.T) {
 	}
 	defer adapter.Close()
 
-	table, err := adapter.Table("records")
+	table, err := adapter.Table(context.TODO(), "records")
 	if err != nil {
 		t.Error(err)
 		return
@@ -123,7 +124,7 @@ func TestQueryTable(t *testing.T) {
 	defer adapter.Close()
 
 	page := model.NewPagination(1, 10)
-	err = adapter.QueryTable("records", page)
+	err = adapter.QueryTable(context.TODO(), "records", page)
 	if err != nil {
 		t.Error(err)
 		return
@@ -156,7 +157,7 @@ func TestQuery(t *testing.T) {
 	defer adapter.Close()
 
 	page := model.NewPagination(1, 10)
-	err = adapter.Query("select * from records", page)
+	err = adapter.Query(context.TODO(), "select * from records", page)
 	if err != nil {
 		t.Error(err)
 		return

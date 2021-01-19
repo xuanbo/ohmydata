@@ -22,13 +22,11 @@ type adapter struct {
 	db *gorm.DB
 }
 
-func (a *adapter) Ping() error {
+func (a *adapter) Ping(ctx context.Context) error {
 	db, err := a.db.DB()
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
 	return db.PingContext(ctx)
 }
 
@@ -40,17 +38,17 @@ func (a *adapter) Close() error {
 	return db.Close()
 }
 
-func (a *adapter) TableNames() ([]string, error) {
+func (a *adapter) TableNames(ctx context.Context) ([]string, error) {
 	var tableNames []string
-	if err := a.db.Raw("SHOW TABLES").Scan(&tableNames).Error; err != nil {
+	if err := a.db.WithContext(ctx).Raw("SHOW TABLES").Scan(&tableNames).Error; err != nil {
 		return nil, err
 	}
 	return tableNames, nil
 }
 
-func (a *adapter) Table(name string) (*db.Table, error) {
+func (a *adapter) Table(ctx context.Context, name string) (*db.Table, error) {
 	querySQL := fmt.Sprintf("SELECT * FROM %s LIMIT 1", name)
-	rows, err := a.db.Raw(querySQL).Rows()
+	rows, err := a.db.WithContext(ctx).Raw(querySQL).Rows()
 	if err != nil {
 		return nil, err
 	}
@@ -95,13 +93,13 @@ func (a *adapter) Table(name string) (*db.Table, error) {
 	return table, nil
 }
 
-func (a *adapter) QueryTable(tableName string, page *model.Pagination) error {
+func (a *adapter) QueryTable(ctx context.Context, tableName string, page *model.Pagination) error {
 	var (
 		total uint64
 		data  []map[string]interface{}
 	)
 	countSQL := fmt.Sprintf("SELECT COUNT(*) FROM %s", tableName)
-	if err := a.db.Raw(countSQL).Scan(&total).Error; err != nil {
+	if err := a.db.WithContext(ctx).Raw(countSQL).Scan(&total).Error; err != nil {
 		return err
 	}
 
@@ -118,7 +116,7 @@ func (a *adapter) QueryTable(tableName string, page *model.Pagination) error {
 	return nil
 }
 
-func (a *adapter) Query(exp string, page *model.Pagination) error {
+func (a *adapter) Query(ctx context.Context, exp string, page *model.Pagination) error {
 	var (
 		total uint64
 		data  []map[string]interface{}
@@ -127,7 +125,7 @@ func (a *adapter) Query(exp string, page *model.Pagination) error {
 	// 未分页限制查询
 	if page.Page == 0 {
 		pageSQL := fmt.Sprintf("SELECT * FROM (%s) TMP_PAGE LIMIT %d", exp, page.Offset)
-		if err := a.db.Raw(pageSQL).Scan(&data).Error; err != nil {
+		if err := a.db.WithContext(ctx).Raw(pageSQL).Scan(&data).Error; err != nil {
 			return err
 		}
 		total = uint64(len(data))
@@ -137,7 +135,7 @@ func (a *adapter) Query(exp string, page *model.Pagination) error {
 	}
 
 	countSQL := fmt.Sprintf("SELECT COUNT(*) FROM (%s) TMP_COUNT", exp)
-	if err := a.db.Raw(countSQL).Scan(&total).Error; err != nil {
+	if err := a.db.WithContext(ctx).Raw(countSQL).Scan(&total).Error; err != nil {
 		return err
 	}
 
@@ -146,7 +144,7 @@ func (a *adapter) Query(exp string, page *model.Pagination) error {
 	}
 
 	pageSQL := fmt.Sprintf("SELECT * FROM (%s) TMP_PAGE LIMIT %d, %d", exp, page.Offset, page.Size)
-	if err := a.db.Raw(pageSQL).Scan(&data).Error; err != nil {
+	if err := a.db.WithContext(ctx).Raw(pageSQL).Scan(&data).Error; err != nil {
 		return err
 	}
 

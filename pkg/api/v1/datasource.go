@@ -110,7 +110,8 @@ func (s *DataSource) Remove(ctx echo.Context) error {
 // TableNames 查询数据源表
 func (s *DataSource) TableNames(ctx echo.Context) error {
 	id := ctx.Param("id")
-	list, err := s.srv.TableNames(id)
+	c := ctx.(*middleware.Context).Ctx()
+	list, err := s.srv.TableNames(c, id)
 	if err != nil {
 		return err
 	}
@@ -124,7 +125,8 @@ func (s *DataSource) Table(ctx echo.Context) error {
 	if name == "" {
 		return ctx.JSON(http.StatusBadRequest, model.Fail("请求参数name必须"))
 	}
-	table, err := s.srv.Table(id, name)
+	c := ctx.(*middleware.Context).Ctx()
+	table, err := s.srv.Table(c, id, name)
 	if err != nil {
 		return err
 	}
@@ -142,7 +144,8 @@ func (s *DataSource) QueryTable(ctx echo.Context) error {
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, model.Fail(err.Error()))
 	}
-	if err := s.srv.QueryTable(id, name, pagination); err != nil {
+	c := ctx.(*middleware.Context).Ctx()
+	if err := s.srv.QueryTable(c, id, name, pagination); err != nil {
 		return err
 	}
 	return ctx.JSON(http.StatusOK, model.OK(pagination))
@@ -163,7 +166,8 @@ func (s *DataSource) Query(ctx echo.Context) error {
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, model.Fail(err.Error()))
 	}
-	if err := s.srv.Query(id, q.SQL, pagination); err != nil {
+	c := ctx.(*middleware.Context).Ctx()
+	if err := s.srv.Query(c, id, q.SQL, pagination); err != nil {
 		return err
 	}
 	return ctx.JSON(http.StatusOK, model.OK(pagination))
