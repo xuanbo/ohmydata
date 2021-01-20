@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/xuanbo/ohmydata/pkg/api/middleware"
-	"github.com/xuanbo/ohmydata/pkg/api/util"
 	"github.com/xuanbo/ohmydata/pkg/entity"
 	"github.com/xuanbo/ohmydata/pkg/model"
 	"github.com/xuanbo/ohmydata/pkg/srv"
@@ -115,15 +114,15 @@ func (s *DataSet) Page(ctx echo.Context) error {
 	if err := ctx.Bind(&condition); err != nil {
 		return err
 	}
-	pagination, err := util.BindPagination(ctx)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, model.Fail(err.Error()))
-	}
-	c := ctx.(*middleware.Context).Ctx()
-	if err := s.srv.Page(c, &condition, pagination); err != nil {
+	var pagination model.Pagination
+	if err := ctx.Bind(&pagination); err != nil {
 		return err
 	}
-	return ctx.JSON(http.StatusOK, model.OK(pagination))
+	c := ctx.(*middleware.Context).Ctx()
+	if err := s.srv.Page(c, &condition, &pagination); err != nil {
+		return err
+	}
+	return ctx.JSON(http.StatusOK, model.OK(&pagination))
 }
 
 // RenderAPIDoc 渲染API文档

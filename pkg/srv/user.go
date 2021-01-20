@@ -40,7 +40,7 @@ func NewUser() *User {
 	if expire == 0 {
 		expire = 30 * 60
 	}
-	return &User{db: db.DB, jwtSecret: secret, jwtExpire: expire}
+	return &User{db: db.DB(), jwtSecret: secret, jwtExpire: expire}
 }
 
 // Username 查询用户

@@ -44,7 +44,7 @@ func init() {
 	}
 
 	// 同步数据源
-	if err := srv.SyncDataSource(srv.NewDataSource()); err != nil {
+	if err := srv.NewDataSource().SyncDataSource(); err != nil {
 		panic(err)
 	}
 }

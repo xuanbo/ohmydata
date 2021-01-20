@@ -1,12 +1,15 @@
 package model
 
+import "github.com/xuanbo/ohmydata/pkg/model/condition"
+
 // Pagination 分页
 type Pagination struct {
-	Page   uint64      `json:"page"`
-	Size   uint64      `json:"size"`
-	Offset uint64      `json:"offset"`
-	Total  uint64      `json:"total"`
-	Data   interface{} `json:"data"`
+	Page   uint64            `json:"page"`
+	Size   uint64            `json:"size"`
+	Offset uint64            `json:"-"`
+	Total  uint64            `json:"total"`
+	Clause *condition.Clause `json:"clause"`
+	Data   interface{}       `json:"data"`
 }
 
 // NewPagination 创建分页对象

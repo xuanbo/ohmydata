@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/xuanbo/ohmydata/pkg/api/middleware"
-	"github.com/xuanbo/ohmydata/pkg/api/util"
 	"github.com/xuanbo/ohmydata/pkg/entity"
 	"github.com/xuanbo/ohmydata/pkg/model"
 	"github.com/xuanbo/ohmydata/pkg/srv"
@@ -26,7 +25,7 @@ func NewDataSource(srv *srv.DataSource) *DataSource {
 // Init 初始化
 func (s *DataSource) Init() error {
 	// 同步适配层
-	return srv.SyncDataSource(s.srv)
+	return s.srv.SyncDataSource()
 }
 
 // AddRoutes 添加路由
@@ -140,15 +139,15 @@ func (s *DataSource) QueryTable(ctx echo.Context) error {
 	if name == "" {
 		return ctx.JSON(http.StatusBadRequest, model.Fail("请求参数name必须"))
 	}
-	pagination, err := util.BindPagination(ctx)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, model.Fail(err.Error()))
-	}
-	c := ctx.(*middleware.Context).Ctx()
-	if err := s.srv.QueryTable(c, id, name, pagination); err != nil {
+	var pagination model.Pagination
+	if err := ctx.Bind(&pagination); err != nil {
 		return err
 	}
-	return ctx.JSON(http.StatusOK, model.OK(pagination))
+	c := ctx.(*middleware.Context).Ctx()
+	if err := s.srv.QueryTable(c, id, name, &pagination); err != nil {
+		return err
+	}
+	return ctx.JSON(http.StatusOK, model.OK(&pagination))
 }
 
 type queryModel struct {
@@ -162,12 +161,12 @@ func (s *DataSource) Query(ctx echo.Context) error {
 	if err := ctx.Bind(q); err != nil || q.SQL == "" {
 		return ctx.JSON(http.StatusBadRequest, model.Fail("请求参数sql必须"))
 	}
-	pagination, err := util.BindPagination(ctx)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, model.Fail(err.Error()))
+	var pagination model.Pagination
+	if err := ctx.Bind(&pagination); err != nil {
+		return err
 	}
 	c := ctx.(*middleware.Context).Ctx()
-	if err := s.srv.Query(c, id, q.SQL, pagination); err != nil {
+	if err := s.srv.Query(c, id, q.SQL, &pagination); err != nil {
 		return err
 	}
 	return ctx.JSON(http.StatusOK, model.OK(pagination))

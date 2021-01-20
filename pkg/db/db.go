@@ -16,9 +16,8 @@ import (
 )
 
 var (
-	// DB gorm db
-	DB   *gorm.DB
-	node *snowflake.Node
+	gormDB *gorm.DB
+	node   *snowflake.Node
 )
 
 // Init 初始化数据库
@@ -30,16 +29,16 @@ func Init() error {
 	log.Logger().Info("初始化数据库", zap.String("url", url))
 
 	var err error
-	DB, err = gorm.Open(mysql.Open(url), &gorm.Config{
+	gormDB, err = gorm.Open(mysql.Open(url), &gorm.Config{
 		Logger: orm.NewZapLogger(log.Logger(), 200*time.Millisecond),
 	})
 	if err != nil {
 		return err
 	}
 	// 设置日志级别
-	DB.Logger.LogMode(logger.Info)
+	gormDB.Logger.LogMode(logger.Info)
 	// 设置连接池
-	db, err := DB.DB()
+	db, err := gormDB.DB()
 	if err != nil {
 		return err
 	}
@@ -64,8 +63,19 @@ func Init() error {
 	return nil
 }
 
+// NewID Generate a snowflake ID.
+func NewID() string {
+	id := node.Generate()
+	return id.String()
+}
+
+// DB DB实例
+func DB() *gorm.DB {
+	return gormDB
+}
+
 func syncDB() error {
-	if err := DB.AutoMigrate(
+	if err := gormDB.AutoMigrate(
 		&entity.User{},
 		&entity.DataSource{}, &entity.DataSet{},
 		&entity.RequestParam{}, &entity.ResponseParam{},
@@ -74,7 +84,7 @@ func syncDB() error {
 	}
 
 	var user entity.User
-	if err := DB.Where("username = ?", "admin").Find(&user).Error; err != nil {
+	if err := gormDB.Where("username = ?", "admin").Find(&user).Error; err != nil {
 		return err
 	}
 	if user.ID == "" {
@@ -83,15 +93,9 @@ func syncDB() error {
 		user.Username = "admin"
 		user.Password = "123456"
 		user.CreatedBy = user.ID
-		if err := DB.Create(&user).Error; err != nil {
+		if err := gormDB.Create(&user).Error; err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-// NewID Generate a snowflake ID.
-func NewID() string {
-	id := node.Generate()
-	return id.String()
 }

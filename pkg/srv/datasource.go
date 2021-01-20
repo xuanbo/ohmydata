@@ -23,7 +23,7 @@ type DataSource struct {
 
 // NewDataSource 创建实例
 func NewDataSource() *DataSource {
-	return &DataSource{db: db.DB}
+	return &DataSource{db: db.DB()}
 }
 
 // Create 新增
@@ -204,10 +204,10 @@ func putAdapter(dataSource *entity.DataSource) error {
 }
 
 // SyncDataSource 同步适配层
-func SyncDataSource(dataSource *DataSource) error {
+func (s *DataSource) SyncDataSource() error {
 	log.Logger().Info("初始化驱动适配数据源")
 
-	list, err := dataSource.All(context.TODO())
+	list, err := s.All(context.TODO())
 	if err != nil {
 		return err
 	}

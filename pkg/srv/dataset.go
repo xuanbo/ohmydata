@@ -45,7 +45,7 @@ func NewDataSet() *DataSet {
 	if err != nil {
 		log.Logger().Info("初始化API文档模板错误", zap.Error(err))
 	}
-	return &DataSet{db: db.DB, tpl: tpl, router: new(Node)}
+	return &DataSet{db: db.DB(), tpl: tpl, router: new(Node)}
 }
 
 // Create 新增
