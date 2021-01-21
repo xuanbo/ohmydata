@@ -1,22 +1,16 @@
 package gorm
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/xuanbo/ohmydata/pkg/model/condition"
 )
 
-var (
-	// ErrClauseNotSupported not supported
-	ErrClauseNotSupported = errors.New("clause not supported")
-)
-
 // ParseClause 解析短语
 func ParseClause(clause *condition.Clause) (string, interface{}, error) {
-	if clause == nil {
-		return "", nil, condition.ErrClauseNil
+	if clause == nil || clause.IsEmpty() {
+		return "", nil, nil
 	}
 	if clause.SingleClause != nil {
 		s, v, err := ParseSingleClause(clause)
@@ -32,48 +26,48 @@ func ParseClause(clause *condition.Clause) (string, interface{}, error) {
 		}
 		return s, v, nil
 	}
-	return "", nil, ErrClauseNotSupported
+	return "", nil, nil
 }
 
 // ParseSingleClause 解析短语
 func ParseSingleClause(clause *condition.Clause) (string, interface{}, error) {
-	if clause.IsError() {
-		return "", nil, clause.Error()
+	if clause == nil || clause.IsEmpty() || clause.SingleClause == nil {
+		return "", nil, nil
 	}
 	switch clause.Op {
-	case condition.Eq:
+	case condition.OpEq:
 		return "`" + clause.Name + "`" + " = ?", clause.Value, nil
-	case condition.NotEq:
+	case condition.OpNotEq:
 		return "`" + clause.Name + "`" + " <> ?", clause.Value, nil
-	case condition.Gt:
+	case condition.OpGt:
 		return "`" + clause.Name + "`" + " > ?", clause.Value, nil
-	case condition.Gte:
+	case condition.OpGte:
 		return "`" + clause.Name + "`" + " >= ?", clause.Value, nil
-	case condition.Lt:
+	case condition.OpLt:
 		return "`" + clause.Name + "`" + " < ?", clause.Value, nil
-	case condition.Lte:
+	case condition.OpLte:
 		return "`" + clause.Name + "`" + " <= ?", clause.Value, nil
-	case condition.Like:
-		return "`" + clause.Name + "`" + " LIKE ?", "%" + fmt.Sprintf("%s", clause.Value) + "%", nil
-	case condition.NotLike:
-		return "`" + clause.Name + "`" + " NOT LIKE ?", "%" + fmt.Sprintf("%s", clause.Value) + "%", nil
-	case condition.In:
+	case condition.OpLike:
+		return "`" + clause.Name + "`" + " LIKE ?", "%" + fmt.Sprintf("%v", clause.Value) + "%", nil
+	case condition.OpNotLike:
+		return "`" + clause.Name + "`" + " NOT LIKE ?", "%" + fmt.Sprintf("%v", clause.Value) + "%", nil
+	case condition.OpIn:
 		return "`" + clause.Name + "`" + " IN ?", clause.Value, nil
-	case condition.NotIn:
+	case condition.OpNotIn:
 		return "`" + clause.Name + "`" + " NOT IN ?", clause.Value, nil
-	case condition.IsNull:
+	case condition.OpIsNull:
 		return "`" + clause.Name + "`" + " IS NULL", nil, nil
-	case condition.IsNotNull:
+	case condition.OpIsNotNull:
 		return "`" + clause.Name + "`" + " IS NOT NULL", nil, nil
 	default:
-		return "", nil, fmt.Errorf("unsupported op: %v", condition.Eq)
+		return "", nil, fmt.Errorf("unsupported op: %v", condition.OpEq)
 	}
 }
 
 // ParseCombineClause 解析多短语
 func ParseCombineClause(clause *condition.Clause) (string, []interface{}, error) {
-	if clause.IsError() {
-		return "", nil, clause.Error()
+	if clause == nil || clause.IsEmpty() || clause.CombineClause == nil {
+		return "", nil, nil
 	}
 	sl := make([]string, 0, 8)
 	vl := make([]interface{}, 0, 8)
@@ -82,14 +76,17 @@ func ParseCombineClause(clause *condition.Clause) (string, []interface{}, error)
 		if err != nil {
 			return "", nil, err
 		}
-		sl = append(sl, s)
-		if v == nil {
+		if s == "" || v == nil {
 			continue
 		}
+		sl = append(sl, "("+s+")")
 		vl = append(vl, v)
 	}
 	if len(vl) == 0 {
-		return "", nil, condition.ErrClauseNil
+		return "", nil, nil
 	}
-	return strings.Join(sl, " AND "), vl, nil
+	if clause.Combine == condition.CombineAnd {
+		return strings.Join(sl, " AND "), vl, nil
+	}
+	return strings.Join(sl, " OR "), vl, nil
 }

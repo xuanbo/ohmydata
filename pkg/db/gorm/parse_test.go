@@ -7,31 +7,29 @@ import (
 	"github.com/xuanbo/ohmydata/pkg/model/condition"
 )
 
-var c condition.Clause
-
 func TestParseSingleClause(t *testing.T) {
-	s, v, err := gorm.ParseClause(c.Eq("name", "zhangsan"))
+	s, v, err := gorm.ParseClause(condition.Eq("name", "zhangsan"))
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	t.Logf("s: %s, v: %v", s, v)
 
-	s, v, err = gorm.ParseClause(c.Like("name", "zhangsan"))
+	s, v, err = gorm.ParseClause(condition.Like("name", "zhangsan"))
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	t.Logf("s: %s, v: %v", s, v)
 
-	s, v, err = gorm.ParseClause(c.IsNull("name"))
+	s, v, err = gorm.ParseClause(condition.IsNull("name"))
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	t.Logf("s: %s, v: %v", s, v)
 
-	s, v, err = gorm.ParseClause(c.In("name", nil))
+	s, v, err = gorm.ParseClause(condition.In("name", nil))
 	if err != nil {
 		t.Error(err)
 		return
@@ -40,14 +38,35 @@ func TestParseSingleClause(t *testing.T) {
 }
 
 func TestParseCombineClause(t *testing.T) {
-	s, v, err := gorm.ParseClause(c.And(c.Eq("name", "zhangsan"), c.Gt("age", 10)))
+	s, v, err := gorm.ParseClause(condition.And(condition.Eq("name", "zhangsan"), condition.Gt("age", 10)))
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	t.Logf("s: %s, v: %v", s, v)
 
-	s, v, err = gorm.ParseClause(c.And(c.Eq("name", "zhangsan"), c.In("status", []interface{}{1, 2, 3})))
+	s, v, err = gorm.ParseClause(condition.And(condition.Eq("name", "zhangsan"), condition.In("status", []interface{}{1, 2, 3})))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	t.Logf("s: %s, v: %v", s, v)
+
+	s, v, err = gorm.ParseClause(condition.And(condition.Eq("name", nil), condition.In("status", []interface{}{1, 2, 3})))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	t.Logf("s: %s, v: %v", s, v)
+
+	s, v, err = gorm.ParseClause(condition.And(condition.Eq("name", "zhangsan"), condition.In("status", []interface{}{})))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	t.Logf("s: %s, v: %v", s, v)
+
+	s, v, err = gorm.ParseClause(condition.And(condition.Eq("name", nil), condition.In("status", []interface{}{})))
 	if err != nil {
 		t.Error(err)
 		return

@@ -7,16 +7,11 @@ import (
 	"github.com/xuanbo/ohmydata/pkg/model/condition"
 )
 
-var (
-	c condition.Clause
-)
-
 func TestClause(t *testing.T) {
-	clause := c.And(c.Eq("name", "zhangsan"), c.In("type", []interface{}{1, 2, 3}))
-	if clause.IsError() {
-		t.Error(clause.Error())
-		return
-	}
+	clause := condition.NewCombineClause(condition.CombineAnd)
+	clause.Add(condition.Eq("name", nil))
+	clause.Add(condition.In("type", []interface{}{1}))
+
 	b, err := json.Marshal(clause)
 	if err != nil {
 		t.Error(err)

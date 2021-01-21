@@ -12,12 +12,18 @@ import (
 )
 
 var (
-	c condition.Clause
+	engine           = gorm.New(db.DB())
+	selectOptionFunc gorm.SelectOptionFunc
 )
 
 func TestParseSingleClause(t *testing.T) {
 	var list []*entity.DataSource
-	err := gorm.Query(context.TODO(), db.DB(), entity.DataSource{}.TableName(), c.Eq("type", "mysql"), &list)
+	err := engine.Query(
+		entity.DataSource{}.TableName(),
+		&list,
+		selectOptionFunc.WithClause(condition.Eq("type", "mysql")),
+		selectOptionFunc.WithContext(context.TODO()),
+	)
 	if err != nil {
 		t.Error(err)
 		return
@@ -28,16 +34,72 @@ func TestParseSingleClause(t *testing.T) {
 		return
 	}
 	t.Logf("list: %s", string(b))
+
+	err = engine.Query(
+		entity.DataSource{}.TableName(),
+		&list,
+		selectOptionFunc.WithClause(condition.Eq("type", nil)),
+		selectOptionFunc.WithContext(context.TODO()),
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	b, err = json.Marshal(list)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	t.Logf("list: %s", string(b))
+
+	err = engine.Query(
+		entity.DataSource{}.TableName(),
+		&list,
+		selectOptionFunc.WithClause(condition.In("type", nil)),
+		selectOptionFunc.WithContext(context.TODO()),
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	b, err = json.Marshal(list)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	t.Logf("list: %s", string(b))
 }
 
 func TestParseCombineClause(t *testing.T) {
 	var list []*entity.DataSource
-	err := gorm.Query(context.TODO(), db.DB(), entity.DataSource{}.TableName(), c.And(c.Eq("description", "mysql"), c.In("type", []interface{}{"mysql"})), &list)
+	err := engine.Query(
+		entity.DataSource{}.TableName(),
+		&list,
+		selectOptionFunc.WithClause(condition.And(condition.Like("name", "MySQL"), condition.In("type", []interface{}{"mysql"}))),
+		selectOptionFunc.WithContext(context.TODO()),
+	)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	b, err := json.Marshal(list)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	t.Logf("list: %s", string(b))
+
+	err = engine.Query(
+		entity.DataSource{}.TableName(),
+		&list,
+		selectOptionFunc.WithClause(condition.And(condition.Like("name", "MySQL"), nil)),
+		selectOptionFunc.WithContext(context.TODO()),
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	b, err = json.Marshal(list)
 	if err != nil {
 		t.Error(err)
 		return

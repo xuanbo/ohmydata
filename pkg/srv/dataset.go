@@ -16,9 +16,11 @@ import (
 
 	"github.com/xuanbo/ohmydata/pkg/cache"
 	"github.com/xuanbo/ohmydata/pkg/db"
+	orm "github.com/xuanbo/ohmydata/pkg/db/gorm"
 	"github.com/xuanbo/ohmydata/pkg/entity"
 	"github.com/xuanbo/ohmydata/pkg/log"
 	"github.com/xuanbo/ohmydata/pkg/model"
+	"github.com/xuanbo/ohmydata/pkg/model/condition"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/labstack/echo/v4"
@@ -29,6 +31,7 @@ import (
 // DataSet 数据集服务
 type DataSet struct {
 	db     *gorm.DB
+	engine *orm.Engine
 	tpl    *template.Template
 	router *Node
 }
@@ -45,7 +48,7 @@ func NewDataSet() *DataSet {
 	if err != nil {
 		log.Logger().Info("初始化API文档模板错误", zap.Error(err))
 	}
-	return &DataSet{db: db.DB(), tpl: tpl, router: new(Node)}
+	return &DataSet{db: db.DB(), engine: orm.New(db.DB()), tpl: tpl, router: new(Node)}
 }
 
 // Create 新增
@@ -160,34 +163,33 @@ func (s *DataSet) Remove(ctx context.Context, id string) error {
 
 // Page 分页查询
 func (s *DataSet) Page(ctx context.Context, dataSet *entity.DataSet, page *model.Pagination) error {
-	where := make([]string, 0, 8)
-	values := make([]interface{}, 0, 8)
+	var (
+		total uint64
+		list  []*entity.DataSet
+		err   error
+	)
+	combineClause := condition.NewCombineClause(condition.CombineAnd)
 	if dataSet.Name != "" {
-		where = append(where, "name LIKE ?")
-		values = append(values, "%"+dataSet.Name+"%")
+		combineClause.Add(condition.Like("name", dataSet.Name))
 	}
 	if dataSet.Path != "" {
-		where = append(where, "path LIKE ?")
-		values = append(values, "%"+dataSet.Path+"%")
+		combineClause.Add(condition.Like("path", dataSet.Path))
 	}
-	var (
-		total int64
-		list  []*entity.DataSet
-	)
-	condition := strings.Join(where, " AND ")
-	if err := s.db.WithContext(ctx).WithContext(ctx).Model(&entity.DataSet{}).Where(condition, values...).
-		Count(&total).Error; err != nil {
+	clause := condition.WrapCombineClause(combineClause)
+
+	if total, err = s.engine.Page(
+		dataSet.TableName(),
+		&list,
+		selectOptionFunc.WithClause(clause),
+		selectOptionFunc.WithContext(ctx),
+		selectOptionFunc.WithPageSize(page.Page, page.Size),
+	); err != nil {
 		return err
 	}
 	if total < 1 {
 		return nil
 	}
-	if err := s.db.WithContext(ctx).Model(&entity.DataSet{}).Where(condition, values...).
-		Limit(int(page.Size)).Offset(int(page.Offset)).
-		Find(&list).Error; err != nil {
-		return err
-	}
-	page.Set(uint64(total), list)
+	page.Set(total, list)
 	return nil
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/xuanbo/ohmydata/pkg/entity"
 	"github.com/xuanbo/ohmydata/pkg/log"
 	"github.com/xuanbo/ohmydata/pkg/model"
+	"github.com/xuanbo/ohmydata/pkg/model/condition"
 )
 
 func init() {
@@ -99,6 +100,7 @@ func TestQueryTable(t *testing.T) {
 	defer adapter.Close()
 
 	page := model.NewPagination(1, 10)
+	page.Clause = condition.Eq("name", "MySQL")
 	err = adapter.QueryTable(context.TODO(), "oh_data_source", page)
 	if err != nil {
 		t.Error(err)

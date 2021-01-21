@@ -15,10 +15,6 @@ import (
 	"gorm.io/gorm"
 )
 
-const (
-	cacheTTL = 5 * time.Minute
-)
-
 // User 用户服务
 type User struct {
 	db        *gorm.DB

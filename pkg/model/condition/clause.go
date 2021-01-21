@@ -1,7 +1,5 @@
 package condition
 
-import "errors"
-
 type (
 	// Op 操作
 	Op uint8
@@ -10,44 +8,41 @@ type (
 )
 
 const (
-	// Eq =
-	Eq Op = iota
-	// NotEq !=
-	NotEq
-	// Gt >
-	Gt
-	// Gte >=
-	Gte
-	// Lt <
-	Lt
-	// Lte <=
-	Lte
-	// Like like
-	Like
-	// NotLike not like
-	NotLike
-	// In in
-	In
-	// NotIn not in
-	NotIn
-	// IsNull is null
-	IsNull
-	// IsNotNull is not null
-	IsNotNull
+	// OpEq =
+	OpEq Op = iota
+	// OpNotEq !=
+	OpNotEq
+	// OpGt >
+	OpGt
+	// OpGte >=
+	OpGte
+	// OpLt <
+	OpLt
+	// OpLte <=
+	OpLte
+	// OpLike like
+	OpLike
+	// OpNotLike not like
+	OpNotLike
+	// OpIn in
+	OpIn
+	// OpNotIn not in
+	OpNotIn
+	// OpIsNull is null
+	OpIsNull
+	// OpIsNotNull is not null
+	OpIsNotNull
 )
 
 const (
-	// And and
-	And Combine = iota
-	// Or or
-	Or
+	// CombineAnd and
+	CombineAnd Combine = iota
+	// CombineOr or
+	CombineOr
 )
 
 var (
-	// ErrNameNil is nil
-	ErrNameNil = errors.New("name is nil")
-	// ErrClauseNil is nil
-	ErrClauseNil = errors.New("clause is nil")
+	emtpy = new(Clause)
 )
 
 // Clause 短语
@@ -57,14 +52,28 @@ type Clause struct {
 	err error
 }
 
-// IsError 是否错误
-func (s Clause) IsError() bool {
-	return s.err != nil
+// IsEmpty 是否为空
+func (c *Clause) IsEmpty() bool {
+	if c == emtpy {
+		return true
+	}
+	return c.SingleClause == nil && c.CombineClause == nil
 }
 
-// Error 错误
-func (s Clause) Error() error {
-	return s.err
+// WrapSingleClause 包装
+func WrapSingleClause(clause *SingleClause) *Clause {
+	if clause == nil {
+		return emtpy
+	}
+	return &Clause{SingleClause: clause}
+}
+
+// WrapCombineClause 包装
+func WrapCombineClause(clause *CombineClause) *Clause {
+	if clause == nil || len(clause.Clauses) == 0 {
+		return emtpy
+	}
+	return &Clause{CombineClause: clause}
 }
 
 // SingleClause 单一短语
@@ -75,99 +84,99 @@ type SingleClause struct {
 }
 
 // Eq =
-func (Clause) Eq(name string, value interface{}) *Clause {
-	if name == "" {
-		return &Clause{err: ErrNameNil}
+func Eq(name string, value interface{}) *Clause {
+	if name == "" || value == nil {
+		return emtpy
 	}
-	return &Clause{SingleClause: &SingleClause{Name: name, Op: Eq, Value: value}}
+	return &Clause{SingleClause: &SingleClause{Name: name, Op: OpEq, Value: value}}
 }
 
 // NotEq !=
-func (Clause) NotEq(name string, value interface{}) *Clause {
-	if name == "" {
-		return &Clause{err: ErrNameNil}
+func NotEq(name string, value interface{}) *Clause {
+	if name == "" || value == nil {
+		return emtpy
 	}
-	return &Clause{SingleClause: &SingleClause{Name: name, Op: NotEq, Value: value}}
+	return &Clause{SingleClause: &SingleClause{Name: name, Op: OpNotEq, Value: value}}
 }
 
 // Gt >
-func (Clause) Gt(name string, value interface{}) *Clause {
-	if name == "" {
-		return &Clause{err: ErrNameNil}
+func Gt(name string, value interface{}) *Clause {
+	if name == "" || value == nil {
+		return emtpy
 	}
-	return &Clause{SingleClause: &SingleClause{Name: name, Op: Gt, Value: value}}
+	return &Clause{SingleClause: &SingleClause{Name: name, Op: OpGt, Value: value}}
 }
 
 // Gte >=
-func (Clause) Gte(name string, value interface{}) *Clause {
-	if name == "" {
-		return &Clause{err: ErrNameNil}
+func Gte(name string, value interface{}) *Clause {
+	if name == "" || value == nil {
+		return emtpy
 	}
-	return &Clause{SingleClause: &SingleClause{Name: name, Op: Gte, Value: value}}
+	return &Clause{SingleClause: &SingleClause{Name: name, Op: OpGte, Value: value}}
 }
 
 // Lt <
-func (Clause) Lt(name string, value interface{}) *Clause {
-	if name == "" {
-		return &Clause{err: ErrNameNil}
+func Lt(name string, value interface{}) *Clause {
+	if name == "" || value == nil {
+		return emtpy
 	}
-	return &Clause{SingleClause: &SingleClause{Name: name, Op: Lt, Value: value}}
+	return &Clause{SingleClause: &SingleClause{Name: name, Op: OpLt, Value: value}}
 }
 
 // Lte <=
-func (Clause) Lte(name string, value interface{}) *Clause {
-	if name == "" {
-		return &Clause{err: ErrNameNil}
+func Lte(name string, value interface{}) *Clause {
+	if name == "" || value == nil {
+		return emtpy
 	}
-	return &Clause{SingleClause: &SingleClause{Name: name, Op: Gte, Value: value}}
+	return &Clause{SingleClause: &SingleClause{Name: name, Op: OpGte, Value: value}}
 }
 
 // Like like
-func (Clause) Like(name string, value string) *Clause {
-	if name == "" {
-		return &Clause{err: ErrNameNil}
+func Like(name string, value interface{}) *Clause {
+	if name == "" || value == nil {
+		return emtpy
 	}
-	return &Clause{SingleClause: &SingleClause{Name: name, Op: Like, Value: value}}
+	return &Clause{SingleClause: &SingleClause{Name: name, Op: OpLike, Value: value}}
 }
 
 // NotLike not like
-func (Clause) NotLike(name string, value string) *Clause {
-	if name == "" {
-		return &Clause{err: ErrNameNil}
+func NotLike(name string, value interface{}) *Clause {
+	if name == "" || value == nil {
+		return emtpy
 	}
-	return &Clause{SingleClause: &SingleClause{Name: name, Op: NotLike, Value: value}}
+	return &Clause{SingleClause: &SingleClause{Name: name, Op: OpNotLike, Value: value}}
 }
 
 // In in
-func (Clause) In(name string, value []interface{}) *Clause {
-	if name == "" {
-		return &Clause{err: ErrNameNil}
+func In(name string, value []interface{}) *Clause {
+	if name == "" || len(value) == 0 {
+		return emtpy
 	}
-	return &Clause{SingleClause: &SingleClause{Name: name, Op: In, Value: value}}
+	return &Clause{SingleClause: &SingleClause{Name: name, Op: OpIn, Value: value}}
 }
 
 // NotIn not in
-func (Clause) NotIn(name string, value []interface{}) *Clause {
-	if name == "" {
-		return &Clause{err: ErrNameNil}
+func NotIn(name string, value []interface{}) *Clause {
+	if name == "" || len(value) == 0 {
+		return emtpy
 	}
-	return &Clause{SingleClause: &SingleClause{Name: name, Op: NotIn, Value: value}}
+	return &Clause{SingleClause: &SingleClause{Name: name, Op: OpNotIn, Value: value}}
 }
 
 // IsNull is null
-func (Clause) IsNull(name string) *Clause {
+func IsNull(name string) *Clause {
 	if name == "" {
-		return &Clause{err: ErrNameNil}
+		return emtpy
 	}
-	return &Clause{SingleClause: &SingleClause{Name: name, Op: IsNull}}
+	return &Clause{SingleClause: &SingleClause{Name: name, Op: OpIsNull}}
 }
 
 // IsNotNull is not in
-func (Clause) IsNotNull(name string) *Clause {
+func IsNotNull(name string) *Clause {
 	if name == "" {
-		return &Clause{err: ErrNameNil}
+		return emtpy
 	}
-	return &Clause{SingleClause: &SingleClause{Name: name, Op: IsNotNull}}
+	return &Clause{SingleClause: &SingleClause{Name: name, Op: OpIsNotNull}}
 }
 
 // CombineClause 多短语
@@ -176,26 +185,59 @@ type CombineClause struct {
 	Clauses []*Clause `json:"clauses"`
 }
 
-// And and
-func (Clause) And(left *Clause, right *Clause, others ...*Clause) *Clause {
-	if left == nil || right == nil {
-		return &Clause{err: ErrClauseNil}
+// NewCombineClause 创建
+func NewCombineClause(combine Combine) *CombineClause {
+	return &CombineClause{Combine: combine, Clauses: make([]*Clause, 0, 8)}
+}
+
+// Add add clause
+func (c *CombineClause) Add(clause *Clause, others ...*Clause) {
+	var clauses *Clause
+	if c.Combine == CombineAnd {
+		clauses = And(clause, others...)
+	} else if c.Combine == CombineOr {
+		clauses = Or(clause, others...)
+	} else {
+		clauses = emtpy
 	}
+	if clauses.IsEmpty() {
+		return
+	}
+	c.Clauses = append(c.Clauses, clauses.Clauses...)
+}
+
+// And and
+func And(left *Clause, rights ...*Clause) *Clause {
 	clauses := make([]*Clause, 0, 8)
-	clauses = append(clauses, left)
-	clauses = append(clauses, right)
-	clauses = append(clauses, others...)
-	return &Clause{CombineClause: &CombineClause{Combine: And, Clauses: clauses}}
+	if !(left == nil || left.IsEmpty()) {
+		clauses = append(clauses, left)
+	}
+	for _, clause := range rights {
+		if clause == nil || clause.IsEmpty() {
+			continue
+		}
+		clauses = append(clauses, clause)
+	}
+	if len(clauses) == 0 {
+		return emtpy
+	}
+	return &Clause{CombineClause: &CombineClause{Combine: CombineAnd, Clauses: clauses}}
 }
 
 // Or or
-func (CombineClause) Or(left *Clause, right *Clause, others ...*Clause) *Clause {
-	if left == nil || right == nil {
-		return &Clause{err: ErrClauseNil}
-	}
+func Or(left *Clause, rights ...*Clause) *Clause {
 	clauses := make([]*Clause, 0, 8)
-	clauses = append(clauses, left)
-	clauses = append(clauses, right)
-	clauses = append(clauses, others...)
-	return &Clause{CombineClause: &CombineClause{Combine: Or, Clauses: clauses}}
+	if !(left == nil || left.IsEmpty()) {
+		clauses = append(clauses, left)
+	}
+	for _, clause := range rights {
+		if clause == nil || clause.IsEmpty() {
+			continue
+		}
+		clauses = append(clauses, clause)
+	}
+	if len(clauses) == 0 {
+		return emtpy
+	}
+	return &Clause{CombineClause: &CombineClause{Combine: CombineOr, Clauses: clauses}}
 }
