@@ -183,6 +183,10 @@ func (s *DataSet) Page(ctx context.Context, dataSet *entity.DataSet, page *model
 		selectOptionFunc.WithClause(clause),
 		selectOptionFunc.WithContext(ctx),
 		selectOptionFunc.WithPageSize(page.Page, page.Size),
+		selectOptionFunc.WithTablePrefix("`"),
+		selectOptionFunc.WithTableSuffix("`"),
+		selectOptionFunc.WithColumnPrefix("`"),
+		selectOptionFunc.WithColumnSuffix("`"),
 	); err != nil {
 		return err
 	}

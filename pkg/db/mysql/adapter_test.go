@@ -88,6 +88,7 @@ func TestQueryTable(t *testing.T) {
 		return
 	}
 	dataSource := &entity.DataSource{
+		ID:           "test",
 		URL:          "root:123456@tcp(127.0.0.1:3306)/ohmydata?charset=utf8",
 		MaxIdleConns: 1,
 		MaxOpenConns: 8,

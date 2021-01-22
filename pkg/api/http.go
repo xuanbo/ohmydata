@@ -36,6 +36,13 @@ func ServeHTTP() error {
 	router.HTTPErrorHandler = customHTTPErrorHandler
 	router.Use(middleware.ZapLogger(log.Logger()))
 	router.Use(middleware.Recover(log.Logger()))
+	router.Use(mw.CORSWithConfig(mw.CORSConfig{
+		AllowOrigins:     []string{"*"},
+		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
+		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete},
+		AllowCredentials: false,
+		MaxAge:           3600,
+	}))
 	router.Use(middleware.NewContext(time.Duration(timeout) * time.Second))
 	router.Use(mw.JWTWithConfig(mw.JWTConfig{
 		// 跳过登录

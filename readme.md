@@ -41,5 +41,5 @@ docker run -it --name ohmydata \
  -e REDIS_ADDR=YOUR_REDIS_ADDR \
  -e REDIS_DB=YOUR_REDIS_DB \
  -e REDIS_PASSWORD=YOUR_REDIS_PASSWORD \
- -p 9090:9090 ohmydata
+ -p 9090:9090 -d ohmydata
 ```

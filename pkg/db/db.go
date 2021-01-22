@@ -30,7 +30,7 @@ func Init() error {
 
 	var err error
 	gormDB, err = gorm.Open(mysql.Open(url), &gorm.Config{
-		Logger: orm.NewZapLogger(log.Logger(), 200*time.Millisecond),
+		Logger: orm.NewZapLogger(log.Logger(), 200*time.Millisecond, ""),
 	})
 	if err != nil {
 		return err

@@ -17,9 +17,12 @@ import (
 	"gorm.io/gorm/logger"
 )
 
+var selectOptionFunc orm.SelectOptionFunc
+
 // adapter PostgreSQL实现
 type adapter struct {
-	db *gorm.DB
+	engine *orm.Engine
+	db     *gorm.DB
 }
 
 func (a *adapter) Ping(ctx context.Context) error {
@@ -97,21 +100,17 @@ func (a *adapter) QueryTable(ctx context.Context, tableName string, page *model.
 	var (
 		total uint64
 		data  []map[string]interface{}
+		err   error
 	)
-	countSQL := fmt.Sprintf("SELECT COUNT(*) FROM %s", tableName)
-	if err := a.db.Raw(countSQL).Scan(&total).Error; err != nil {
+	if total, err = a.engine.Page(
+		tableName,
+		&data,
+		selectOptionFunc.WithContext(ctx),
+		selectOptionFunc.WithClause(page.Clause),
+		selectOptionFunc.WithPageSize(page.Page, page.Size),
+	); err != nil {
 		return err
 	}
-
-	if total == 0 {
-		return nil
-	}
-
-	pageSQL := fmt.Sprintf("SELECT * FROM %s LIMIT %d OFFSET %d", tableName, page.Size, page.Offset)
-	if err := a.db.WithContext(ctx).Raw(pageSQL).Scan(&data).Error; err != nil {
-		return err
-	}
-
 	page.Set(total, data)
 	return nil
 }
@@ -159,21 +158,21 @@ type adapterFactory struct {
 func (a *adapterFactory) Create(dataSource *entity.DataSource) (db.Adapter, error) {
 	gormDB, err := gorm.Open(postgres.Open(dataSource.URL), &gorm.Config{
 		DisableAutomaticPing: true,
-		Logger:               orm.NewZapLogger(log.Logger(), 200*time.Millisecond),
+		Logger:               orm.NewZapLogger(log.Logger(), 200*time.Millisecond, fmt.Sprintf("驱动 [%s] ", dataSource.ID)),
 	})
 	if err != nil {
-		return &adapter{gormDB}, err
+		return &adapter{engine: orm.New(gormDB), db: gormDB}, err
 	}
 	// 设置日志级别
-	gormDB.Logger.LogMode(logger.Warn)
+	gormDB.Logger.LogMode(logger.Info)
 	// 设置数据库连接池
 	db, err := gormDB.DB()
 	if err != nil {
-		return nil, err
+		return &adapter{engine: orm.New(gormDB), db: gormDB}, err
 	}
 	db.SetMaxIdleConns(dataSource.MaxIdleConns)
 	db.SetMaxOpenConns(dataSource.MaxOpenConns)
-	return &adapter{gormDB}, nil
+	return &adapter{engine: orm.New(gormDB), db: gormDB}, nil
 }
 
 // Register 注册

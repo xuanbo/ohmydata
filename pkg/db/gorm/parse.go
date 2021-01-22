@@ -7,8 +7,33 @@ import (
 	"github.com/xuanbo/ohmydata/pkg/model/condition"
 )
 
+var columnOptionFunc ColumnOptionFunc
+
+// ColumnOption column选项
+type ColumnOption struct {
+	columnPrefix string
+	columnSuffix string
+}
+
+// ColumnOptionFunc column选项方法
+type ColumnOptionFunc func(op *ColumnOption)
+
+// WithColumnPrefix 配置字段前缀
+func (ColumnOptionFunc) WithColumnPrefix(columnPrefix string) ColumnOptionFunc {
+	return func(op *ColumnOption) {
+		op.columnPrefix = columnPrefix
+	}
+}
+
+// WithColumnSuffix 配置字段后缀
+func (ColumnOptionFunc) WithColumnSuffix(columnSuffix string) ColumnOptionFunc {
+	return func(op *ColumnOption) {
+		op.columnSuffix = columnSuffix
+	}
+}
+
 // ParseClause 解析短语
-func ParseClause(clause *condition.Clause) (string, interface{}, error) {
+func ParseClause(clause *condition.Clause, opts ...ColumnOptionFunc) (string, interface{}, error) {
 	if clause == nil || clause.IsEmpty() {
 		return "", nil, nil
 	}
@@ -30,42 +55,48 @@ func ParseClause(clause *condition.Clause) (string, interface{}, error) {
 }
 
 // ParseSingleClause 解析短语
-func ParseSingleClause(clause *condition.Clause) (string, interface{}, error) {
+func ParseSingleClause(clause *condition.Clause, opts ...ColumnOptionFunc) (string, interface{}, error) {
 	if clause == nil || clause.IsEmpty() || clause.SingleClause == nil {
 		return "", nil, nil
 	}
+	op := &ColumnOption{}
+	for _, opt := range opts {
+		opt(op)
+	}
+	column := op.columnPrefix + clause.Name + op.columnSuffix
+
 	switch clause.Op {
 	case condition.OpEq:
-		return "`" + clause.Name + "`" + " = ?", clause.Value, nil
+		return column + " = ?", clause.Value, nil
 	case condition.OpNotEq:
-		return "`" + clause.Name + "`" + " <> ?", clause.Value, nil
+		return column + " <> ?", clause.Value, nil
 	case condition.OpGt:
-		return "`" + clause.Name + "`" + " > ?", clause.Value, nil
+		return column + " > ?", clause.Value, nil
 	case condition.OpGte:
-		return "`" + clause.Name + "`" + " >= ?", clause.Value, nil
+		return column + " >= ?", clause.Value, nil
 	case condition.OpLt:
-		return "`" + clause.Name + "`" + " < ?", clause.Value, nil
+		return column + " < ?", clause.Value, nil
 	case condition.OpLte:
-		return "`" + clause.Name + "`" + " <= ?", clause.Value, nil
+		return column + " <= ?", clause.Value, nil
 	case condition.OpLike:
-		return "`" + clause.Name + "`" + " LIKE ?", "%" + fmt.Sprintf("%v", clause.Value) + "%", nil
+		return column + " LIKE ?", "%" + fmt.Sprintf("%v", clause.Value) + "%", nil
 	case condition.OpNotLike:
-		return "`" + clause.Name + "`" + " NOT LIKE ?", "%" + fmt.Sprintf("%v", clause.Value) + "%", nil
+		return column + " NOT LIKE ?", "%" + fmt.Sprintf("%v", clause.Value) + "%", nil
 	case condition.OpIn:
-		return "`" + clause.Name + "`" + " IN ?", clause.Value, nil
+		return column + " IN ?", clause.Value, nil
 	case condition.OpNotIn:
-		return "`" + clause.Name + "`" + " NOT IN ?", clause.Value, nil
+		return column + " NOT IN ?", clause.Value, nil
 	case condition.OpIsNull:
-		return "`" + clause.Name + "`" + " IS NULL", nil, nil
+		return column + " IS NULL", nil, nil
 	case condition.OpIsNotNull:
-		return "`" + clause.Name + "`" + " IS NOT NULL", nil, nil
+		return column + " IS NOT NULL", nil, nil
 	default:
 		return "", nil, fmt.Errorf("unsupported op: %v", condition.OpEq)
 	}
 }
 
 // ParseCombineClause 解析多短语
-func ParseCombineClause(clause *condition.Clause) (string, []interface{}, error) {
+func ParseCombineClause(clause *condition.Clause, opts ...ColumnOptionFunc) (string, []interface{}, error) {
 	if clause == nil || clause.IsEmpty() || clause.CombineClause == nil {
 		return "", nil, nil
 	}

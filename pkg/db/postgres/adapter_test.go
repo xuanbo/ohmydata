@@ -87,6 +87,7 @@ func TestQueryTable(t *testing.T) {
 		return
 	}
 	dataSource := &entity.DataSource{
+		ID:           "test",
 		URL:          "host=localhost user=postgres password=123456 dbname=ohmydata port=5432 sslmode=disable TimeZone=Asia/Shanghai",
 		MaxIdleConns: 1,
 		MaxOpenConns: 8,

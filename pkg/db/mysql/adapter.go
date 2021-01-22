@@ -108,6 +108,10 @@ func (a *adapter) QueryTable(ctx context.Context, tableName string, page *model.
 		selectOptionFunc.WithContext(ctx),
 		selectOptionFunc.WithClause(page.Clause),
 		selectOptionFunc.WithPageSize(page.Page, page.Size),
+		selectOptionFunc.WithTablePrefix("`"),
+		selectOptionFunc.WithTableSuffix("`"),
+		selectOptionFunc.WithColumnPrefix("`"),
+		selectOptionFunc.WithColumnSuffix("`"),
 	); err != nil {
 		return err
 	}
@@ -161,7 +165,7 @@ func (a *adapterFactory) Create(dataSource *entity.DataSource) (db.Adapter, erro
 		SkipInitializeWithVersion: true,
 	}), &gorm.Config{
 		DisableAutomaticPing: true,
-		Logger:               orm.NewZapLogger(log.Logger(), 200*time.Millisecond),
+		Logger:               orm.NewZapLogger(log.Logger(), 200*time.Millisecond, fmt.Sprintf("驱动 [%s] ", dataSource.ID)),
 	})
 	if err != nil {
 		return &adapter{engine: orm.New(gormDB), db: gormDB}, err

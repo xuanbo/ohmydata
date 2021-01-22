@@ -14,11 +14,12 @@ type ZapLogger struct {
 	SlowThreshold time.Duration
 	level         logger.LogLevel
 	logger        *zap.Logger
+	prefix        string
 }
 
 // NewZapLogger 创建实例
-func NewZapLogger(logger *zap.Logger, slowThreshold time.Duration) *ZapLogger {
-	return &ZapLogger{SlowThreshold: slowThreshold, logger: logger}
+func NewZapLogger(logger *zap.Logger, slowThreshold time.Duration, prefix string) *ZapLogger {
+	return &ZapLogger{SlowThreshold: slowThreshold, logger: logger, prefix: prefix}
 }
 
 // LogMode 实现LogMode接口
@@ -46,16 +47,17 @@ func (zl *ZapLogger) Error(ctx context.Context, msg string, v ...interface{}) {
 func (zl *ZapLogger) Trace(ctx context.Context, begin time.Time, fc func() (string, int64), err error) {
 	if zl.level > 0 {
 		elapsed := time.Since(begin)
+		msg := zl.prefix + "Execute SQL"
 		switch {
 		case err != nil && zl.level >= logger.Error:
 			sql, rows := fc()
-			zl.logger.Error("SQL", zap.String("sql", sql), zap.String("cost", elapsed.String()), zap.Int64("rows", rows), zap.Error(err))
+			zl.logger.Error(msg, zap.String("sql", sql), zap.String("cost", elapsed.String()), zap.Int64("rows", rows), zap.Error(err))
 		case zl.level >= logger.Info:
 			sql, rows := fc()
 			if elapsed >= zl.SlowThreshold {
-				zl.logger.Warn("SQL", zap.String("sql", sql), zap.String("cost", elapsed.String()), zap.Int64("rows", rows))
+				zl.logger.Warn(msg, zap.String("sql", sql), zap.String("cost", elapsed.String()), zap.Int64("rows", rows))
 			} else {
-				zl.logger.Debug("SQL", zap.String("sql", sql), zap.String("cost", elapsed.String()), zap.Int64("rows", rows))
+				zl.logger.Debug(msg, zap.String("sql", sql), zap.String("cost", elapsed.String()), zap.Int64("rows", rows))
 			}
 		}
 	}
