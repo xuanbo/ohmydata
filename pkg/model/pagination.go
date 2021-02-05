@@ -4,8 +4,8 @@ import "github.com/xuanbo/ohmydata/pkg/model/condition"
 
 // Pagination 分页
 type Pagination struct {
-	Page   uint64            `json:"page"`
-	Size   uint64            `json:"size"`
+	Page   uint64            `json:"page" query:"page"`
+	Size   uint64            `json:"size" query:"size"`
 	Offset uint64            `json:"-"`
 	Total  uint64            `json:"total"`
 	Clause *condition.Clause `json:"clause"`

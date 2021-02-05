@@ -151,7 +151,7 @@ func (e *Engine) Query(table string, dest interface{}, opts ...SelectOptionFunc)
 
 	if op.clause == nil || op.clause.IsEmpty() {
 		sql := fmt.Sprintf("SELECT * FROM %s", table)
-		return db.Raw(sql).Find(&dest).Error
+		return db.Raw(sql).Find(dest).Error
 	}
 	if op.clause.SingleClause != nil {
 		s, v, err := ParseSingleClause(op.clause, columnOptionFunc.WithColumnPrefix(op.columnPrefix), columnOptionFunc.WithColumnSuffix(op.columnSuffix))
@@ -204,10 +204,10 @@ func (e *Engine) Page(table string, dest interface{}, opts ...SelectOptionFunc) 
 		}
 		if offset == 0 {
 			sql := fmt.Sprintf("SELECT * FROM %s LIMIT %d", table, op.size)
-			return 0, db.Raw(sql).Find(&dest).Error
+			return total, db.Raw(sql).Find(dest).Error
 		}
 		sql = fmt.Sprintf("SELECT * FROM %s OFFSET %d LIMIT %d", table, offset, op.size)
-		return 0, db.Raw(sql).Find(&dest).Error
+		return total, db.Raw(sql).Find(dest).Error
 	}
 	if op.clause.SingleClause != nil {
 		s, v, err := ParseSingleClause(op.clause, columnOptionFunc.WithColumnPrefix(op.columnPrefix), columnOptionFunc.WithColumnSuffix(op.columnSuffix))

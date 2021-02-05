@@ -151,22 +151,24 @@ func (s *DataSource) QueryTable(ctx echo.Context) error {
 }
 
 type queryModel struct {
-	SQL string `json:"sql"`
+	SQL  string `json:"sql"`
+	Page uint64 `json:"page" query:"page"`
+	Size uint64 `json:"size" query:"size"`
 }
 
 // Query 查询数据
 func (s *DataSource) Query(ctx echo.Context) error {
 	id := ctx.Param("id")
 	q := new(queryModel)
-	if err := ctx.Bind(q); err != nil || q.SQL == "" {
-		return ctx.JSON(http.StatusBadRequest, model.Fail("请求参数sql必须"))
-	}
-	var pagination model.Pagination
-	if err := ctx.Bind(&pagination); err != nil {
+	if err := ctx.Bind(q); err != nil {
 		return err
 	}
+	if q.SQL == "" {
+		return ctx.JSON(http.StatusBadRequest, model.Fail("请求参数sql必须"))
+	}
+	pagination := model.NewPagination(q.Page, q.Size)
 	c := ctx.(*middleware.Context).Ctx()
-	if err := s.srv.Query(c, id, q.SQL, &pagination); err != nil {
+	if err := s.srv.Query(c, id, q.SQL, pagination); err != nil {
 		return err
 	}
 	return ctx.JSON(http.StatusOK, model.OK(pagination))

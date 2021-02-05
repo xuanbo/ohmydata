@@ -6,6 +6,27 @@
 
 [ohmydata-web](https://github.com/sjhleo/ohmydata-web)
 
+## 演示地址
+
+```
+http://47.111.102.84:8080/project/ohmydata/#/login
+
+admin/123456
+```
+
+## 界面
+
+### 数据源
+
+- 管理数据库连接
+- 查看表数据
+
+![datasource-list](docs/datasource-list.png)
+
+### 数据集
+
+待补充
+
 ## 数据源
 
 采用接口抽象数据层访问，可扩展。
