@@ -42,9 +42,9 @@ func (u *User) Login(ctx echo.Context) error {
 		return err
 	}
 	c := ctx.(*middleware.Context).Ctx()
-	s, err := u.srv.Login(c, &user)
+	res, err := u.srv.Login(c, &user)
 	if err != nil {
 		return err
 	}
-	return ctx.JSON(http.StatusOK, model.OK(s))
+	return ctx.JSON(http.StatusOK, model.OK(res))
 }

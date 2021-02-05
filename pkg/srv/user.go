@@ -3,6 +3,7 @@ package srv
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/xuanbo/ohmydata/pkg/cache"
@@ -61,22 +62,22 @@ func (u *User) Username(ctx context.Context, username string) (*entity.User, err
 }
 
 // Login 登录
-func (u *User) Login(ctx context.Context, user *entity.User) (string, error) {
+func (u *User) Login(ctx context.Context, user *entity.User) (map[string]interface{}, error) {
 	if user.Username == "" {
-		return "", errors.New("用户名不能为空")
+		return nil, errors.New("用户名不能为空")
 	}
 	if user.Password == "" {
-		return "", errors.New("密码不能为空")
+		return nil, errors.New("密码不能为空")
 	}
 	s, err := u.Username(ctx, user.Username)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if s == nil {
-		return "", errors.New("用户不存在")
+		return nil, errors.New("用户不存在")
 	}
 	if s.Password != user.Password {
-		return "", errors.New("密码错误")
+		return nil, errors.New("密码错误")
 	}
 	// Create the Claims
 	claims := &jwt.StandardClaims{
@@ -94,5 +95,16 @@ func (u *User) Login(ctx context.Context, user *entity.User) (string, error) {
 		Claims: claims,
 		Method: jwt.SigningMethodHS256,
 	}
-	return token.SignedString([]byte(u.jwtSecret))
+	str, err := token.SignedString([]byte(u.jwtSecret))
+	if s.Password != user.Password {
+		return nil, fmt.Errorf("生成token失败: %w", err)
+	}
+	res := map[string]interface{}{
+		"token": str,
+		// 用户信息
+		"userId":   s.ID,
+		"userName": s.Name,
+		"username": s.Username,
+	}
+	return res, nil
 }
