@@ -1,8 +1,6 @@
 package entity
 
 import (
-	"time"
-
 	"github.com/xuanbo/ohmydata/pkg/api/util"
 
 	"gorm.io/gorm"
@@ -10,7 +8,7 @@ import (
 
 // RequestParam 请求参数
 type RequestParam struct {
-	ID          string `json:"id" gorm:"primaryKey;type:string;size:30"`
+	Entity
 	DataSetID   string `json:"dataSetId" gorm:"type:string;size:30"`
 	Name        string `json:"name" gorm:"type:string;size:50"`
 	Description string `json:"description" gorm:"type:string;size:100"`
@@ -19,12 +17,9 @@ type RequestParam struct {
 	// 参数类型
 	ParamType ParamType `json:"paramType" gorm:"type:uint;size:2"`
 	// 是否必须
-	Required     bool       `json:"required" gorm:"type:bool"`
-	DefaultValue string     `json:"defaultValue" gorm:"type:string;size:100"`
-	CreatedAt    *time.Time `json:"createdAt" gorm:"<-:create"`
-	UpdatedAt    *time.Time `json:"updatedAt" gorm:"<-:create;<-:update"`
-	CreatedBy    string     `json:"createdBy" gorm:"<-:create"`
-	UpdatedBy    string     `json:"updatedBy" gorm:"<-:create;<-:update"`
+	Required bool `json:"required" gorm:"type:bool"`
+	// 默认值
+	DefaultValue string `json:"defaultValue" gorm:"type:string;size:100"`
 }
 
 // TableName 表名

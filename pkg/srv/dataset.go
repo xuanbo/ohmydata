@@ -348,6 +348,9 @@ func (s *DataSet) ServeAPI(ctx context.Context, path string, query, body map[str
 	if err != nil {
 		return nil, err
 	}
+	if node == nil {
+		return nil, echo.NewHTTPError(http.StatusNotFound, "API不存在，请检查访问路径")
+	}
 	// 绑定的数据集ID
 	id := node.Handle.(string)
 	if id == "" {

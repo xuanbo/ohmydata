@@ -1,8 +1,6 @@
 package entity
 
 import (
-	"time"
-
 	"github.com/xuanbo/ohmydata/pkg/api/util"
 
 	"gorm.io/gorm"
@@ -10,19 +8,16 @@ import (
 
 // ResponseParam 响应参数
 type ResponseParam struct {
-	ID          string `json:"id" gorm:"primaryKey;type:string;size:30"`
+	Entity
 	DataSetID   string `json:"dataSetId" gorm:"type:string;size:30"`
 	Name        string `json:"name" gorm:"type:string;size:50"`
 	Description string `json:"description" gorm:"type:string;size:100"`
 	// 参数类型
 	ParamType ParamType `json:"paramType" gorm:"type:uint;size:2"`
 	// 转换方式
-	ConvertType  ConvertType `json:"convertType" gorm:"type:uint;size:1"`
-	ConvertValue string      `json:"convertValue" gorm:"type:string;size:255"`
-	CreatedAt    *time.Time  `json:"createdAt" gorm:"<-:create"`
-	UpdatedAt    *time.Time  `json:"updatedAt" gorm:"<-:create;<-:update"`
-	CreatedBy    string      `json:"createdBy" gorm:"<-:create"`
-	UpdatedBy    string      `json:"updatedBy" gorm:"<-:create;<-:update"`
+	ConvertType ConvertType `json:"convertType" gorm:"type:uint;size:1"`
+	// 转换值
+	ConvertValue string `json:"convertValue" gorm:"type:string;size:255"`
 }
 
 // TableName 表名

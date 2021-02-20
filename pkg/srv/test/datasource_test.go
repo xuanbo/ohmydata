@@ -25,7 +25,9 @@ func TestDataSourceCreate(t *testing.T) {
 func TestDataSourceModify(t *testing.T) {
 	dataSource := srv.NewDataSource()
 	err := dataSource.Modify(context.TODO(), &entity.DataSource{
-		ID:          "1346731818388295680",
+		Entity: entity.Entity{
+			ID: "1346731818388295680",
+		},
 		Type:        "mysql",
 		Description: "123",
 		URL:         "root:123456@tcp(127.0.0.1:3306)/ohmydata?charset=utf8",

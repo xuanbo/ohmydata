@@ -7,6 +7,7 @@ import (
 	"github.com/xuanbo/ohmydata/pkg/api/middleware"
 	"github.com/xuanbo/ohmydata/pkg/entity"
 	"github.com/xuanbo/ohmydata/pkg/model"
+	"github.com/xuanbo/ohmydata/pkg/model/condition"
 	"github.com/xuanbo/ohmydata/pkg/srv"
 
 	"github.com/labstack/echo/v4"
@@ -80,7 +81,7 @@ func (s *DataSource) Create(ctx echo.Context) error {
 	if err := s.srv.Create(c, &dataSource); err != nil {
 		return err
 	}
-	return ctx.JSON(http.StatusOK, model.OK(&s))
+	return ctx.JSON(http.StatusOK, model.OK(&dataSource))
 }
 
 // Modify 修改
@@ -132,25 +133,65 @@ func (s *DataSource) Table(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, model.OK(table))
 }
 
+type dataSourceQuery struct {
+	Name    string      `json:"name"`
+	Operate string      `json:"operate"`
+	Value   interface{} `json:"value"`
+}
+
+type dataSourceQueryTableCondition struct {
+	Name    string             `json:"name" query:"name"`
+	Page    uint64             `json:"page" query:"page"`
+	Size    uint64             `json:"size" query:"size"`
+	Queries []*dataSourceQuery `json:"queries"`
+}
+
 // QueryTable 查询表数据
 func (s *DataSource) QueryTable(ctx echo.Context) error {
 	id := ctx.Param("id")
-	name := ctx.QueryParam("name")
-	if name == "" {
+	var queryCondition dataSourceQueryTableCondition
+	if err := ctx.Bind(&queryCondition); err != nil {
+		return err
+	}
+	if queryCondition.Name == "" {
 		return ctx.JSON(http.StatusBadRequest, model.Fail("请求参数name必须"))
 	}
-	var pagination model.Pagination
-	if err := ctx.Bind(&pagination); err != nil {
-		return err
+	pagination := model.NewPagination(queryCondition.Page, queryCondition.Size)
+
+	if len(queryCondition.Queries) > 0 {
+		combineClause := condition.NewCombineClause(condition.CombineAnd)
+		for _, query := range queryCondition.Queries {
+			switch query.Operate {
+			case "EQ":
+				combineClause.Add(condition.Eq(query.Name, query.Value))
+			case "GT":
+				combineClause.Add(condition.Gt(query.Name, query.Value))
+			case "GTE":
+				combineClause.Add(condition.Gte(query.Name, query.Value))
+			case "LT":
+				combineClause.Add(condition.Lt(query.Name, query.Value))
+			case "LTE":
+				combineClause.Add(condition.Lte(query.Name, query.Value))
+			case "LIKE":
+				combineClause.Add(condition.Like(query.Name, query.Value))
+			case "IS_NOT_NULL":
+				combineClause.Add(condition.IsNotNull(query.Name))
+			case "IS_NULL":
+				combineClause.Add(condition.IsNull(query.Name))
+			}
+		}
+		clause := condition.WrapCombineClause(combineClause)
+		pagination.Clause = clause
 	}
+
 	c := ctx.(*middleware.Context).Ctx()
-	if err := s.srv.QueryTable(c, id, name, &pagination); err != nil {
+	if err := s.srv.QueryTable(c, id, queryCondition.Name, pagination); err != nil {
 		return err
 	}
-	return ctx.JSON(http.StatusOK, model.OK(&pagination))
+	return ctx.JSON(http.StatusOK, model.OK(pagination))
 }
 
-type queryModel struct {
+type dataSourceQueryCondition struct {
 	SQL  string `json:"sql"`
 	Page uint64 `json:"page" query:"page"`
 	Size uint64 `json:"size" query:"size"`
@@ -159,16 +200,16 @@ type queryModel struct {
 // Query 查询数据
 func (s *DataSource) Query(ctx echo.Context) error {
 	id := ctx.Param("id")
-	q := new(queryModel)
-	if err := ctx.Bind(q); err != nil {
+	var condition dataSourceQueryCondition
+	if err := ctx.Bind(&condition); err != nil {
 		return err
 	}
-	if q.SQL == "" {
+	if condition.SQL == "" {
 		return ctx.JSON(http.StatusBadRequest, model.Fail("请求参数sql必须"))
 	}
-	pagination := model.NewPagination(q.Page, q.Size)
+	pagination := model.NewPagination(condition.Page, condition.Size)
 	c := ctx.(*middleware.Context).Ctx()
-	if err := s.srv.Query(c, id, q.SQL, pagination); err != nil {
+	if err := s.srv.Query(c, id, condition.SQL, pagination); err != nil {
 		return err
 	}
 	return ctx.JSON(http.StatusOK, model.OK(pagination))

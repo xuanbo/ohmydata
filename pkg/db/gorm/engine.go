@@ -206,7 +206,7 @@ func (e *Engine) Page(table string, dest interface{}, opts ...SelectOptionFunc) 
 			sql := fmt.Sprintf("SELECT * FROM %s LIMIT %d", table, op.size)
 			return total, db.Raw(sql).Find(dest).Error
 		}
-		sql = fmt.Sprintf("SELECT * FROM %s OFFSET %d LIMIT %d", table, offset, op.size)
+		sql = fmt.Sprintf("SELECT * FROM %s LIMIT %d OFFSET %d", table, op.size, offset)
 		return total, db.Raw(sql).Find(dest).Error
 	}
 	if op.clause.SingleClause != nil {
@@ -225,7 +225,7 @@ func (e *Engine) Page(table string, dest interface{}, opts ...SelectOptionFunc) 
 			sql := fmt.Sprintf("SELECT * FROM %s WHERE %s LIMIT %d", table, s, op.size)
 			return total, db.Raw(sql, v).Find(dest).Error
 		}
-		sql = fmt.Sprintf("SELECT * FROM %s WHERE %s OFFSET %d LIMIT %d", table, s, offset, op.size)
+		sql = fmt.Sprintf("SELECT * FROM %s WHERE %s LIMIT %d OFFSET %d", table, s, op.size, offset)
 		return total, db.Raw(sql, v).Find(dest).Error
 	}
 	if op.clause.CombineClause != nil {
@@ -244,7 +244,7 @@ func (e *Engine) Page(table string, dest interface{}, opts ...SelectOptionFunc) 
 			sql := fmt.Sprintf("SELECT * FROM %s WHERE %s LIMIT %d", table, s, op.size)
 			return total, db.Raw(sql, v...).Find(dest).Error
 		}
-		sql = fmt.Sprintf("SELECT * FROM %s WHERE %s OFFSET %d LIMIT %d", table, s, offset, op.size)
+		sql = fmt.Sprintf("SELECT * FROM %s WHERE %s LIMIT %d OFFSET %d", table, s, op.size, offset)
 		return total, db.Raw(sql, v...).Find(dest).Error
 	}
 	return 0, ErrClauseNotSupported

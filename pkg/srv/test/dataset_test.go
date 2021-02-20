@@ -34,7 +34,9 @@ func TestDataSetCreate(t *testing.T) {
 func TestDataSetModify(t *testing.T) {
 	dataSet := srv.NewDataSet()
 	err := dataSet.Modify(context.TODO(), &entity.DataSet{
-		ID:         "1347447490357497856",
+		Entity: entity.Entity{
+			ID: "1347447490357497856",
+		},
 		SourceID:   "1347065257465483264",
 		Name:       "测试",
 		Path:       "/test/page",

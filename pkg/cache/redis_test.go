@@ -18,7 +18,9 @@ func init() {
 
 func TestCache(t *testing.T) {
 	user := &entity.User{
-		ID:       "1",
+		Entity: entity.Entity{
+			ID: "test",
+		},
 		Name:     "1",
 		Username: "1",
 		Password: "1",

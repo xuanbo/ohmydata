@@ -108,21 +108,29 @@ func (s *DataSet) Detail(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, model.OK(dataSet))
 }
 
+type dataSetCondition struct {
+	Name string `json:"name" query:"name"`
+	Path string `json:"path" query:"path"`
+	Page uint64 `json:"page" query:"page"`
+	Size uint64 `json:"size" query:"size"`
+}
+
 // Page 分页查询
 func (s *DataSet) Page(ctx echo.Context) error {
-	var condition entity.DataSet
+	var condition dataSetCondition
 	if err := ctx.Bind(&condition); err != nil {
 		return err
 	}
-	var pagination model.Pagination
-	if err := ctx.Bind(&pagination); err != nil {
-		return err
+	pagination := model.NewPagination(condition.Page, condition.Size)
+	dataSet := entity.DataSet{
+		Name: condition.Name,
+		Path: condition.Path,
 	}
 	c := ctx.(*middleware.Context).Ctx()
-	if err := s.srv.Page(c, &condition, &pagination); err != nil {
+	if err := s.srv.Page(c, &dataSet, pagination); err != nil {
 		return err
 	}
-	return ctx.JSON(http.StatusOK, model.OK(&pagination))
+	return ctx.JSON(http.StatusOK, model.OK(pagination))
 }
 
 // RenderAPIDoc 渲染API文档
