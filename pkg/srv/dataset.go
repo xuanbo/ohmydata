@@ -267,8 +267,8 @@ func (s *DataSet) Detail(ctx context.Context, id string) (*entity.DataSet, error
 	return &dataSet, err
 }
 
-// ChagePublishStatus 修改发布状态
-func (s *DataSet) ChagePublishStatus(ctx context.Context, id string, status bool) error {
+// ChangePublishStatus 修改发布状态
+func (s *DataSet) ChangePublishStatus(ctx context.Context, id string, status bool) error {
 	if err := s.db.WithContext(ctx).Model(&entity.DataSet{}).Where("id = ?", id).
 		Update("publish_status", status).Error; err != nil {
 		return err
@@ -336,25 +336,34 @@ func (s *DataSet) ParseExpression(expression string) ([]*entity.RequestParam, er
 	return variables, nil
 }
 
-// ServeAPI 提供API服务
-func (s *DataSet) ServeAPI(ctx context.Context, path string, query, body map[string]interface{}) (interface{}, error) {
-	// 合并参数
-	params := query
-	for k, v := range body {
-		params[k] = v
+// PreviewData 预览数据
+func (s *DataSet) PreviewData(ctx context.Context, dataSet *entity.DataSet, params map[string]interface{}) (interface{}, error) {
+	// 分页参数处理
+	var (
+		page, size uint64
+		err        error
+	)
+	if page, size, err = parsePagination(params, dataSet); err != nil {
+		return nil, err
 	}
+	pagination := model.NewPagination(page, size)
+	return doSelect(ctx, dataSet, pagination, params)
+}
+
+// ServeAPI 提供API服务
+func (s *DataSet) ServeAPI(ctx context.Context, path string, params map[string]interface{}) (interface{}, error) {
 	// 路径匹配
 	node, nameParams, err := s.router.Match(path)
 	if err != nil {
 		return nil, err
 	}
 	if node == nil {
-		return nil, echo.NewHTTPError(http.StatusNotFound, "API不存在，请检查访问路径")
+		return nil, echo.NewHTTPError(http.StatusNotFound, "API不存在或未发布，请检查API")
 	}
 	// 绑定的数据集ID
 	id := node.Handle.(string)
 	if id == "" {
-		return nil, echo.NewHTTPError(http.StatusNotFound, "API不存在，请检查访问路径")
+		return nil, echo.NewHTTPError(http.StatusNotFound, "API不存在或未发布，请检查API")
 	}
 	for k, v := range nameParams {
 		params[k] = v
@@ -366,7 +375,7 @@ func (s *DataSet) ServeAPI(ctx context.Context, path string, query, body map[str
 		return nil, err
 	}
 	if dataSet == nil {
-		return nil, echo.NewHTTPError(http.StatusNotFound, "API不存在，请检查访问路径")
+		return nil, echo.NewHTTPError(http.StatusNotFound, "API不存在或未发布，请检查API")
 	}
 
 	// 分页参数处理
@@ -561,6 +570,8 @@ func doSelect(ctx context.Context, dataSet *entity.DataSet, pagination *model.Pa
 		return nil, err
 	}
 
+	// TODO 请求参数校验
+
 	// 渲染表达式
 	log.Logger().Info("表达式模板", zap.String("expression", dataSet.Expression))
 	var buff bytes.Buffer
@@ -590,16 +601,18 @@ func convertResponseParams(pagination *model.Pagination, dataSet *entity.DataSet
 	if list, ok := pagination.Data.([]map[string]interface{}); ok {
 		for _, row := range list {
 			// 字段过滤
-			for k := range row {
-				var ok bool
-				for _, p := range dataSet.ResponseParams {
-					if k == p.Name {
-						ok = true
-						break
+			if len(dataSet.ResponseParams) > 0 {
+				for k := range row {
+					var ok bool
+					for _, p := range dataSet.ResponseParams {
+						if k == p.Name {
+							ok = true
+							break
+						}
 					}
-				}
-				if !ok {
-					delete(row, k)
+					if !ok {
+						delete(row, k)
+					}
 				}
 			}
 			// 处理字段转换
@@ -619,6 +632,13 @@ func convertResponseParams(pagination *model.Pagination, dataSet *entity.DataSet
 	}
 	// 未分页则返回数据
 	if !dataSet.EnablePage {
+		// 如果只有1条数据，则返回对象
+		if dataSet.BatchLimit == 1 {
+			if list, ok := pagination.Data.([]map[string]interface{}); ok && len(list) > 0 {
+				return list[0], nil
+			}
+			return nil, nil
+		}
 		return pagination.Data, nil
 	}
 	return pagination, nil

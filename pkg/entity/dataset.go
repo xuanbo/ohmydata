@@ -9,7 +9,7 @@ import (
 // DataSet 数据集
 type DataSet struct {
 	Entity
-	SourceID    string `json:"sourceID" gorm:"column:;type:string;size:30"`
+	SourceID    string `json:"sourceId" gorm:"column:;type:string;size:30"`
 	Name        string `json:"name" gorm:"type:string;size:50"`
 	Description string `json:"description" gorm:"type:string;size:100"`
 	// 自定义请求路径
@@ -27,7 +27,7 @@ type DataSet struct {
 
 	// 参数
 	RequestParams  []*RequestParam  `json:"requestParams" gorm:"-"`
-	ResponseParams []*ResponseParam `json:"responseParam" gorm:"-"`
+	ResponseParams []*ResponseParam `json:"responseParams" gorm:"-"`
 }
 
 // TableName 表名

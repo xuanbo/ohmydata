@@ -2,6 +2,7 @@ package v1
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/xuanbo/ohmydata/pkg/api/middleware"
@@ -38,8 +39,10 @@ func (s *DataSet) AddRoutes(e *echo.Echo) {
 		g.PUT("/data-set", s.Modify)
 		g.GET("/data-set/:id", s.ID)
 		g.GET("/data-set/:id/detail", s.Detail)
+		g.PUT("/data-set/:id/publish-status/:publishStatus", s.ChangePublishStatus)
 		g.GET("/data-set/:id/doc", s.RenderAPIDoc)
 		g.POST("/data-set/exp", s.ParseExpression)
+		g.POST("/data-set/preview", s.PreviewData)
 		g.DELETE("/data-set/:id", s.Remove)
 		g.POST("/data-set/page", s.Page)
 		g.GET("/data-set/routes", s.APIRoutes)
@@ -108,6 +111,21 @@ func (s *DataSet) Detail(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, model.OK(dataSet))
 }
 
+// ChangePublishStatus 修改发布状态
+func (s *DataSet) ChangePublishStatus(ctx echo.Context) error {
+	id := ctx.Param("id")
+	publishStatus := ctx.Param("publishStatus")
+	status, err := strconv.ParseBool(publishStatus)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "publishStatus必须为bool")
+	}
+	c := ctx.(*middleware.Context).Ctx()
+	if err := s.srv.ChangePublishStatus(c, id, status); err != nil {
+		return err
+	}
+	return ctx.JSON(http.StatusOK, model.OK(id))
+}
+
 type dataSetCondition struct {
 	Name string `json:"name" query:"name"`
 	Path string `json:"path" query:"path"`
@@ -144,21 +162,46 @@ func (s *DataSet) RenderAPIDoc(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, model.OK(doc))
 }
 
-type exp struct {
+type dataSetExpressionCondition struct {
 	Expression string `json:"expression"`
 }
 
 // ParseExpression 解析表达式
 func (s *DataSet) ParseExpression(ctx echo.Context) error {
-	var exp exp
-	if err := ctx.Bind(&exp); err != nil {
+	var condition dataSetExpressionCondition
+	if err := ctx.Bind(&condition); err != nil {
 		return err
 	}
-	list, err := s.srv.ParseExpression(exp.Expression)
+	list, err := s.srv.ParseExpression(condition.Expression)
 	if err != nil {
 		return err
 	}
 	return ctx.JSON(http.StatusOK, model.OK(list))
+}
+
+type dataSetPreviewCondition struct {
+	DataSet *entity.DataSet        `json:"dataSet"`
+	Params  map[string]interface{} `json:"params"`
+}
+
+// PreviewData 预览表达式内容
+func (s *DataSet) PreviewData(ctx echo.Context) error {
+	var condition dataSetPreviewCondition
+	if err := ctx.Bind(&condition); err != nil {
+		return err
+	}
+	if condition.DataSet == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "dataSet必须存在")
+	}
+	if condition.Params == nil {
+		condition.Params = make(map[string]interface{})
+	}
+	c := ctx.(*middleware.Context).Ctx()
+	v, err := s.srv.PreviewData(c, condition.DataSet, condition.Params)
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(http.StatusOK, model.OK(v))
 }
 
 // ServeAPI 提供API服务
@@ -175,11 +218,16 @@ func (s *DataSet) ServeAPI(ctx echo.Context) error {
 	if err := ctx.Bind(&body); err != nil {
 		return err
 	}
+	// 合并参数
+	params := query
+	for k, v := range body {
+		params[k] = v
+	}
 	// 去除前缀
 	path := ctx.Request().URL.Path
 	path = strings.TrimPrefix(path, "/api/")
 	c := ctx.(*middleware.Context).Ctx()
-	pagination, err := s.srv.ServeAPI(c, path, query, body)
+	pagination, err := s.srv.ServeAPI(c, path, params)
 	if err != nil {
 		return err
 	}
