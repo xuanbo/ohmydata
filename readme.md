@@ -25,7 +25,10 @@ admin/123456
 
 ### 数据集
 
-待补充
+- 创建数据集
+- 发布 API
+
+![dataset-create](docs/dataset-create.png)
 
 ## 数据源
 
